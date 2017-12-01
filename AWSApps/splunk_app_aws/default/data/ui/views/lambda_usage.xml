@@ -1,0 +1,432 @@
+<form script="base_page.js">
+    <label>Lambda</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix>(</prefix>
+            <suffix>)</suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </default>
+        </input>
+    </fieldset>
+
+    <search id="baseSearch">
+        <query>
+            <![CDATA[
+                `aws-cloudwatch-lambda($accountId$, $region$)`
+                | where Sum>0
+                | stats sum(Sum) as Sum by metric_dimensions metric_name _time
+                | `aws-cloudwatch-dimension-rex("FunctionName", "FunctionName")`
+            ]]>
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Duration (ms) by Function</title>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search metric_name=Duration
+                            | stats sum(Sum) as Durations by FunctionName
+                            | table FunctionName Durations
+                            | where Durations>0
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="charting.chart.sliceCollapsingLabel">Other</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.1</option>
+                <option name="charting.chart.showLabels">true</option>
+                <option name="drilldown">all</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-cloudwatch-lambda($accountId$, $region$)` metric_name=Duration
+                            | `aws-cloudwatch-dimension-rex("FunctionName", "FunctionName")`
+                            | stats sum(Sum) as Durations by FunctionName
+                            | table FunctionName Durations
+                            | where Durations>0
+                            | search FunctionName="$click.value$"&latest=$latest$&earliest=$earliest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+
+        <panel>
+            <chart>
+                <title>Invocations by Function</title>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search metric_name=Invocations
+                            | stats sum(Sum) as Invocations by FunctionName
+                            | table FunctionName Invocations
+                            | where Invocations>0
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="charting.chart.sliceCollapsingLabel">Other</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.1</option>
+                <option name="drilldown">all</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-cloudwatch-lambda($accountId$, $region$)` metric_name=Invocations
+                            | `aws-cloudwatch-dimension-rex("FunctionName", "FunctionName")`
+                            | stats sum(Sum) as Invocations by FunctionName
+                            | table FunctionName Invocations
+                            | where Invocations>0
+                            | search FunctionName="$click.value$"&latest=$latest$&earliest=$earliest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Errors by Function</title>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search metric_name=Errors
+                            | stats sum(Sum) as Errors by FunctionName
+                            | table FunctionName Errors
+                            | where Errors>0
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="charting.chart.sliceCollapsingLabel">Other</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.1</option>
+                <option name="drilldown">all</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-cloudwatch-lambda($accountId$, $region$)` metric_name=Errors
+                            | `aws-cloudwatch-dimension-rex("FunctionName", "FunctionName")`
+                            | stats sum(Sum) as Errors by FunctionName
+                            | table FunctionName Errors
+                            | where Errors>0
+                            | search FunctionName="$click.value$"&latest=$latest$&earliest=$earliest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+
+        <panel>
+            <chart>
+                <title>Throttles by Function</title>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search metric_name=Throttles
+                            | stats sum(Sum) as Throttles by FunctionName
+                            | table FunctionName Throttles
+                            | where Throttles>0
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="charting.chart.sliceCollapsingLabel">Other</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.1</option>
+                <option name="drilldown">all</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-cloudwatch-lambda($accountId$, $region$)` metric_name=Throttles
+                            | `aws-cloudwatch-dimension-rex("FunctionName", "FunctionName")`
+                            | stats sum(Sum) as Throttles by FunctionName
+                            | table FunctionName Throttles
+                            | where Throttles>0
+                            | search FunctionName="$click.value$"&latest=$latest$&earliest=$earliest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+
+        <panel>
+            <chart>
+                <title>GB-s by Function</title>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                        search metric_name=Duration
+                        | stats sum(Sum) as Durations by FunctionName
+                        | join left FunctionName
+                        [
+                            search earliest=-1d `aws-description("*", "*", "lambda_functions", "FunctionArn")`
+                        ]
+                        | eval DurationsRounded=ceiling(Durations/100)/10,GBS=MemorySize*DurationsRounded
+                        | table FunctionName, GBS
+                        | where GBS>0
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="charting.chart.sliceCollapsingLabel">Other</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.1</option>
+                <option name="drilldown">all</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-cloudwatch-lambda($accountId$, $region$)` metric_name=Duration
+                        | `aws-cloudwatch-dimension-rex("FunctionName", "FunctionName")`
+                        | where Sum>0
+                        | stats sum(Sum) as Durations by FunctionName
+                        | join left FunctionName
+                        [
+                            search earliest=-1d `aws-description("*", "*", "lambda_functions", "FunctionArn")`
+                            | eval MemorySize=MemorySize/1024
+                        ]
+                        | eval DurationsRounded=ceiling(Durations/100)/10,GBS=MemorySize*DurationsRounded
+                        | table FunctionName, GBS
+                        | where GBS>0
+                        | search FunctionName="$click.value$"&latest=$latest$&earliest=$earliest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Duration (ms) by Function Over Time</title>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search metric_name=Duration
+                            | timechart sum(Sum) as Sum by FunctionName
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Duration (ms)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Invocations by Function Over Time</title>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search metric_name=Invocations
+                            | timechart sum(Sum) as Sum by FunctionName
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Invocations (count)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Errors by Function Over Time</title>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search metric_name=Errors
+                            | timechart sum(Sum) as Sum by FunctionName
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Errors (count)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Throttles by Function Over Time</title>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search metric_name=Throttles
+                            | timechart sum(Sum) as Sum by FunctionName
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Throttles (count)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>GB-s by Function Over Time</title>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search metric_name=Duration
+                            | join left FunctionName
+                            [
+                                search earliest=-1d `aws-description("*", "*", "lambda_functions", "FunctionArn")`
+                            ]
+                            | eval GBS=Sum*MemorySize
+                            | timechart sum(GBS) by FunctionName
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">GB-s</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+</form>

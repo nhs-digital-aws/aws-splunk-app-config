@@ -1,0 +1,265 @@
+<form script="base_page.js">
+    <label>EBS Volumes</label>
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input id="awstags" token="tags">
+        </input>
+    </fieldset>
+
+    <search id="baseVolumeSearch">
+        <query>
+            <![CDATA[
+                `aws-cloudwatch-ebs($accountId$, $region$)` (metric_name="VolumeWriteOps" OR metric_name="VolumeReadOps")
+                | eval Average = Average/period
+                | stats avg(Average) as iops by metric_dimensions
+                | eval iops = round(iops*2, 2)
+            ]]>
+        </query>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+    </search>
+
+    <row>
+        <panel>
+            <single>
+                <title>In-Use EBS Volumes</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ec2_volumes")` $tags|tag2description$
+                            | stats dc(id) as count by status
+                            | eventstats sum(count) as total | where status="in-use"
+                            | nadefault count total
+                            | eval _total_name="volumes", _total_field=total
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-description-resource($accountId$, $region$, "ec2_volumes")` $tags|tag2description$
+                            | sort -status
+                            | table id,region,type,encrypted,iops,size,snapshot_id,status&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>In-Use EBS Volume Size</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ec2_volumes")` $tags|tag2description$
+                            | search status="in-use"
+                            | stats sum(size) as size
+                            | nadefault size
+                            | `volume_size(size)`
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-description-resource($accountId$, $region$, "ec2_volumes")` $tags|tag2description$
+                            | search status="in-use"
+                            |sort -size | table id,region,type,encrypted,iops,size,snapshot_id&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">size</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>EBS Snapshots Size</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ebs_snapshots")` $tags|tag2description$
+                            | stats dc(id) as count, sum(volume_size) as size
+                            | nadefault count size
+                            | `volume_size(size)`
+                            | eval _total_name="snapshots", _total_prefix="from", _total_field=count
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-description-resource($accountId$, $region$, "ebs_snapshots")` $tags|tag2description$
+                            |sort -start_time
+                            |table id,description,volume_id,volume_size,start_time&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">size</option>
+            </single>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>In-Use EBS Volumes by Type</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ec2_volumes")` $tags|tag2description$
+                            | search status="in-use"
+                            | stats dc(id) as Count by type
+                            | rename type as Type
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">visible</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">pie</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>EBS Volumes by Sizes</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ec2_volumes")` $tags|tag2description$
+                            | rangemap field=size "0-9G"=0-9  "10-49G"=10-49 "50-99G"=50-99 "100-199G"=100-199 "200-499G"=200-499 default=">=500G"
+                            | stats count count(eval(status=="in-use")) as inuse by range
+                            | eval unused = count-inuse
+                            | rex field=range (?<lower>.*)-
+                            | sort lower
+                            | table range unused inuse
+                            | rename inuse as "In-Use", unused as "Unused", range as "Size (GB)"
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.text">Size (GB)</option>
+                <option name="charting.axisTitleY.text">Count</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">bottom</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.fieldColors">{Unused:0xd93f3c,In-Use:0x65a637}</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>EBS Volumes by IOPS</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ec2_volumes")` $tags|tag2description$
+                            | stats count count(eval(status=="in-use")) as inuse by iops
+                            | eval unused = count-inuse
+                            | rename iops as IOPS
+                            | sort IOPS
+                            | table IOPS unused inuse
+                            | rename inuse as "In-Use", unused as "Unused"
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.text">IOPS</option>
+                <option name="charting.axisTitleY.text">Count</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">bottom</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.fieldColors">{Unused:0xd93f3c,In-Use:0x65a637}</option>
+            </chart>
+        </panel>
+    </row>
+</form>

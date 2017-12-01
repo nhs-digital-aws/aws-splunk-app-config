@@ -1,0 +1,18 @@
+[
+    {
+        "stanzas": [
+            {
+                "name": "sqs-based-s3-01",
+                "aws_account": "aws-account-0",
+                "aws_iam_role": "aws-iam-role-0",
+                "sqs_queue_url": "https://sqs.ap-southeast-1.amazonaws.com/0000000000/my-queue",
+                "sqs_queue_region": "ap-southeast-1",
+                "s3_file_decoder": "CloudTrail",
+                "sqs_batch_size": "10",
+                "index": "default",
+                "interval": "300",
+                "sourcetype": "aws:cloudtrail"
+            }
+        ]
+    }
+]

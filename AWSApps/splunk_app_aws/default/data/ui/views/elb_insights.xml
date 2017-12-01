@@ -1,0 +1,98 @@
+<form script="common_insights.js">
+    <label>ELB Insights</label>
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" id="account" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <fieldForLabel>title</fieldForLabel>
+            <fieldForValue>account_id</fieldForValue>
+            <search>
+                <query>
+                    <![CDATA[
+                        | aclinputlookup all_account_ids
+                        | mvcombine delim=", " name
+                        | nomv name
+                        | eval title=account_id." (".name.")"
+                    ]]>
+                </query>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" id="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <fieldForLabel>label</fieldForLabel>
+            <fieldForValue>region</fieldForValue>
+            <search id="regionSearch">
+                <query>
+                    <![CDATA[
+                        | inputlookup regions
+                    ]]>
+                </query>
+            </search>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="insight_filter" searchWhenChanged="true">
+            <label>Insights Filter</label>
+            <choice value="*">All</choice>
+            <default>All</default>
+            <fieldForLabel>insight</fieldForLabel>
+            <fieldForValue>insight</fieldForValue>
+            <search>
+                <query>
+                    <![CDATA[
+                        | inputlookup insights | search service="Elastic load balancing" | sort - severity
+                    ]]>
+                </query>
+            </search>
+            <valuePrefix>insight="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <delimiter> OR </delimiter>
+        </input>
+    </fieldset>
+    <search id="baseSearch">
+        <query>
+            <![CDATA[
+            `aws-unused-elb($accountId$, $region$)`
+            | append [search earliest=-1d `aws-not-autoscaling-elb($accountId$, $region$)`]
+            | append [search earliest=-1d `aws-not-enough-request-elb($accountId$, $region$)`]
+            | append [search earliest=-1d `aws-insecure-listener-elb($accountId$, $region$)`]
+            | append [search earliest=-1d `aws-not-cross-zone-elb($accountId$, $region$)`]
+            | lookup regions region OUTPUT label
+            | rename label as Region
+            ]]>
+        </query>
+        <earliest>-1d</earliest>
+        <latest>now</latest>
+    </search>
+    <row>
+        <panel>
+            <table id="results">
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                        search $insight_filter$
+                        | eval Type=if(Type="application", "Application", "Classic"), service="Elastic load balancing"
+                        | lookup insights service insight OUTPUT severity as Severity
+                        | rename account_id as "Account ID", name as Name,
+                        availability_zones as "Availability zones", insight as Insight
+                        | table "Account ID", Region, Name, Type, "Availability zones", Insight, Severity
+                        ]]>
+                    </query>
+                </search>
+                <option name="drilldown">none</option>
+                <option name="count">15</option>
+            </table>
+        </panel>
+    </row>
+</form>

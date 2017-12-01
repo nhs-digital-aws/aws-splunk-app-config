@@ -1,0 +1,348 @@
+{
+    "modelName": "Instance_Hour",
+    "displayName": "Instance Hour",
+    "description": "",
+    "objectSummary": {
+        "Event-Based": 1,
+        "Transaction-Based": 0,
+        "Search-Based": 0
+    },
+    "objects": [
+        {
+            "objectName": "instance_hour",
+            "displayName": "instance hour",
+            "parentName": "BaseEvent",
+            "fields": [
+                {
+                    "fieldName": "AvailabilityZone",
+                    "owner": "instance_hour",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "AvailabilityZone",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "BlendedCost",
+                    "owner": "instance_hour",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "BlendedCost",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "ItemDescription",
+                    "owner": "instance_hour",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "ItemDescription",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "ResourceId",
+                    "owner": "instance_hour",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "ResourceId",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "ReservedInstance",
+                    "owner": "instance_hour",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "ReservedInstance",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "S3KeyLastModified",
+                    "owner": "instance_hour",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "S3KeyLastModified",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "LinkedAccountId",
+                            "owner": "instance_hour",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "LinkedAccountId",
+                            "comment": ""
+                        }
+                    ],
+                    "owner": "instance_hour",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Eval",
+                    "expression": "if(isnull(LinkedAccountId), PayerAccountId, LinkedAccountId)"
+                },
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "tenancy1",
+                            "owner": "instance_hour",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": true,
+                            "editable": true,
+                            "displayName": "tenancy1",
+                            "comment": ""
+                        },
+                        {
+                            "fieldName": "platform1",
+                            "owner": "instance_hour",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": true,
+                            "editable": true,
+                            "displayName": "platform1",
+                            "comment": ""
+                        },
+                        {
+                            "fieldName": "instance_type1",
+                            "owner": "instance_hour",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": true,
+                            "editable": true,
+                            "displayName": "instance_type1",
+                            "comment": ""
+                        }
+                    ],
+                    "inputField": "ItemDescription",
+                    "owner": "instance_hour",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Rex",
+                    "expression": ".* per (?<tenancy1>(Dedicated|On Demand|Spot)?)\\s*(Usage|hour for)?\\s*(?<platform1>(Red Hat|Windows BYOL|SQL \\w+|Windows with SQL \\w+|[\\w\\/]+)).*?(?<instance_type1>[\\w.\\d]+)( [iI]nstance.*|$)"
+                },
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "instance_type2",
+                            "owner": "instance_hour",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": true,
+                            "editable": true,
+                            "displayName": "instance_type2",
+                            "comment": ""
+                        },
+                        {
+                            "fieldName": "platform2",
+                            "owner": "instance_hour",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": true,
+                            "editable": true,
+                            "displayName": "platform2",
+                            "comment": ""
+                        },
+                        {
+                            "fieldName": "tenancy2",
+                            "owner": "instance_hour",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": true,
+                            "editable": true,
+                            "displayName": "tenancy2",
+                            "comment": ""
+                        }
+                    ],
+                    "inputField": "ItemDescription",
+                    "owner": "instance_hour",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Rex",
+                    "expression": "(?<instance_type2>[\\w.\\d]+)\\s+(?<platform2>(Red Hat|Windows BYOL|SQL \\w+|Windows with SQL \\w+|[\\w\\/]+))\\s(?<tenancy2>(Dedicated|On Demand|Spot)?)\\sInstance-hour.*"
+                },
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "platform3",
+                            "owner": "instance_hour",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": true,
+                            "editable": true,
+                            "displayName": "platform3",
+                            "comment": ""
+                        }
+                    ],
+                    "owner": "instance_hour",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Eval",
+                    "expression": "if(isnull(platform1), platform2, platform1)"
+                },
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "tenancy",
+                            "owner": "instance_hour",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "Tenancy",
+                            "comment": ""
+                        }
+                    ],
+                    "owner": "instance_hour",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Eval",
+                    "expression": "case((tenancy1 == \"\" OR isnull(tenancy1)) AND (tenancy2 == \"\" OR isnull(tenancy2)), \"On Demand\", tenancy1 == \"\" OR isnull(tenancy1),tenancy2,(tenancy2 == \"\" OR isnull(tenancy2)), tenancy1)"
+                },
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "instance_type",
+                            "owner": "instance_hour",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "InstanceType",
+                            "comment": ""
+                        }
+                    ],
+                    "owner": "instance_hour",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Eval",
+                    "expression": "if((isnull(instance_type1) OR instance_type1 == \"\"), instance_type2, instance_type1)"
+                },
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "platform",
+                            "owner": "instance_hour",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "Platform",
+                            "comment": ""
+                        }
+                    ],
+                    "owner": "instance_hour",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Eval",
+                    "expression": "case(platform3 == \"Linux/UNIX\", \"Linux\", platform3 == \"Red Hat\", \"RHEL\", platform3 == \"SQL Std\", \"Windows with SQL Std\", platform3 == \"SQL Web\", \"Windows with SQL Web\", true(), platform3)"
+                }
+            ],
+            "constraints": [
+                {
+                    "search": "`aws-billing-details(\"*\")`\n ProductName=\"Amazon Elastic Compute Cloud\" Operation=\"RunInstances*\" UsageType=*Usage* UsageType!=\"*Host*Usage*\"",
+                    "owner": "instance_hour"
+                }
+            ],
+            "lineage": "instance_hour"
+        }
+    ],
+    "objectNameList": [
+        "instance_hour"
+    ]
+}

@@ -1,0 +1,8 @@
+<panel>
+  <title>AWS CloudTrail - Error Activity in Past 24 Hours</title>
+    <table>
+    <searchString>sourcetype="aws:cloudtrail" NOT (eventName=Describe* OR eventName=List* OR eventName=Get*) errorCode | top errorCode | eval percent=tostring(round(percent, 0))+"%" | rename errorCode as "Error Code", count as Count, percent as Percent</searchString>
+    <earliestTime>-24h</earliestTime>
+    <latestTime />
+  </table>
+</panel>

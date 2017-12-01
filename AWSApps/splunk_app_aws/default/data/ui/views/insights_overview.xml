@@ -1,0 +1,411 @@
+<form script="base_page.js">
+    <label>Insights Overview</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <search>
+                <query>
+                    <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+                </query>
+            </search>
+            <fieldForValue>account_id</fieldForValue>
+            <fieldForLabel>title</fieldForLabel>
+            <prefix>(</prefix>
+            <suffix>)</suffix>
+            <valuePrefix>account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <search>
+                <query>
+                    <![CDATA[ |inputlookup regions ]]>
+                </query>
+            </search>
+            <fieldForValue>region</fieldForValue>
+            <fieldForLabel>label</fieldForLabel>
+            <prefix>(</prefix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+            <suffix>)</suffix>
+        </input>
+    </fieldset>
+
+    <row>
+        <panel>
+            <title>Insights - Yesterday</title>
+            <single>
+                <title>EC2</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | makeresults | eval ec2InsightsResult="$ec2InsightsResult$"
+                        ]]>
+                    </query>
+                    <earliest>-7d@d</earliest>
+                    <latest>@d</latest>
+                </search>
+                <drilldown>
+                    <link>
+                        ec2_insights
+                    </link>
+                </drilldown>
+            </single>
+            <single>
+                <title>EBS</title>
+                <search>
+                    <query>index=summary insights=ebs $accountId$ $region$ | timechart span=1d sum(count)</query>
+                    <earliest>-7d@d</earliest>
+                    <latest>@d</latest>
+                </search>
+                <option name="colorBy">trend</option>
+                <option name="colorMode">none</option>
+                <option name="drilldown">all</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+                <option name="rangeValues">[0,30,70,100]</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">inverse</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="unitPosition">after</option>
+                <option name="useColors">1</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="trendInterval">-1d</option>
+                <drilldown>
+                    <link>
+                        ebs_insights
+                    </link>
+                </drilldown>
+            </single>
+            <single>
+                <title>ELB</title>
+                <search>
+                    <query>index=summary insights=elb $accountId$ $region$ | timechart span=1d sum(count)</query>
+                    <earliest>-7d@d</earliest>
+                    <latest>@d</latest>
+                </search>
+                <option name="colorBy">trend</option>
+                <option name="colorMode">none</option>
+                <option name="drilldown">all</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+                <option name="rangeValues">[0,30,70,100]</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">inverse</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="unitPosition">after</option>
+                <option name="useColors">1</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="trendInterval">-1d</option>
+                <drilldown>
+                    <link>
+                        elb_insights
+                    </link>
+                </drilldown>
+            </single>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <single>
+                <title>Elastic IP</title>
+                <search>
+                    <query>index=summary insights=eip $accountId$ $region$ | timechart span=1d sum(count)</query>
+                    <earliest>-7d@d</earliest>
+                    <latest>@d</latest>
+                </search>
+                <option name="colorBy">trend</option>
+                <option name="colorMode">none</option>
+                <option name="drilldown">all</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+                <option name="rangeValues">[0,30,70,100]</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">inverse</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="unitPosition">after</option>
+                <option name="useColors">1</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="trendInterval">-1d</option>
+                <drilldown>
+                    <link>
+                        eip_insights
+                    </link>
+                </drilldown>
+            </single>
+            <single>
+                <title>Security Group</title>
+                <search>
+                    <query>index=summary insights=sg $accountId$ $region$ | timechart span=1d sum(count)</query>
+                    <earliest>-7d@d</earliest>
+                    <latest>@d</latest>
+                </search>
+                <option name="colorBy">trend</option>
+                <option name="colorMode">none</option>
+                <option name="drilldown">all</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+                <option name="rangeValues">[0,30,70,100]</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">inverse</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="unitPosition">after</option>
+                <option name="useColors">1</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="trendInterval">-1d</option>
+                <drilldown>
+                    <link>
+                        sg_insights
+                    </link>
+                </drilldown>
+            </single>
+            <single>
+                <title>IAM</title>
+                <search>
+                    <query>index=summary insights=iam $accountId$ | timechart span=1d sum(count)</query>
+                    <earliest>-7d@d</earliest>
+                    <latest>@d</latest>
+                </search>
+                <option name="colorBy">trend</option>
+                <option name="colorMode">none</option>
+                <option name="drilldown">all</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+                <option name="rangeValues">[0,30,70,100]</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">inverse</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="unitPosition">after</option>
+                <option name="useColors">1</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="trendInterval">-1d</option>
+                <drilldown>
+                    <link>
+                        iam_insights
+                    </link>
+                </drilldown>
+            </single>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <single>
+                <title>Config Rules</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-config-rules-insights($accountId$ ,$region$)` | timechart span=1d sum(count)
+                        ]]>
+                    </query>
+                    <earliest>-7d@d</earliest>
+                    <latest>@d</latest>
+                </search>
+                <option name="colorBy">trend</option>
+                <option name="colorMode">none</option>
+                <option name="drilldown">all</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+                <option name="rangeValues">[0,30,70,100]</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">inverse</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="unitPosition">after</option>
+                <option name="useColors">1</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="trendInterval">-1d</option>
+                <drilldown>
+                    <link>
+                        config_rules
+                    </link>
+                </drilldown>
+            </single>
+            <single>
+                <title>Amazon Inspector</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                        `aws-inspector-insights($accountId$ ,$region$)` | timechart span=1d sum(count)
+                        ]]>
+                    </query>
+                    <earliest>-7d@d</earliest>
+                    <latest>@d</latest>
+                </search>
+                <option name="colorBy">trend</option>
+                <option name="colorMode">none</option>
+                <option name="drilldown">all</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+                <option name="rangeValues">[0,30,70,100]</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">inverse</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="unitPosition">after</option>
+                <option name="useColors">1</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="trendInterval">-1d</option>
+                <drilldown>
+                    <link>
+                        inspector
+                    </link>
+                </drilldown>
+            </single>
+            <single>
+                <title>AWS Personal Health</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-personal-health-insights($accountId$ ,$region$)` | timechart span=1d sum(count)
+                        ]]>
+                    </query>
+                    <earliest>-7d@d</earliest>
+                    <latest>@d</latest>
+                </search>
+                <option name="colorBy">trend</option>
+                <option name="colorMode">none</option>
+                <option name="drilldown">all</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+                <option name="rangeValues">[0,30,70,100]</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">inverse</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="unitPosition">after</option>
+                <option name="useColors">1</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="trendInterval">-1d</option>
+                <drilldown>
+                    <link>
+                        personal_health
+                    </link>
+                </drilldown>
+            </single>
+        </panel>
+    </row>
+    <search id="ec2Search">
+        <query>| rest services/saas-aws/splunk_app_aws_recommendation splunk_server=local | search resource_type="i" | join resource_id [search earliest=-1d `aws-description-resource($accountId$, $region$, "ec2_instances")` | rename id as resource_id | fields resource_id]</query>
+        <done>
+            <condition match="$recommendationEnabled$">
+                <set token="ec2InsightsResult">$job.resultCount$</set>
+            </condition>
+            <condition>
+                <set token="ec2InsightsResult">N/A</set>
+            </condition>
+        </done>
+    </search>
+    <search id="baseSearch">
+        <query>
+            <![CDATA[
+                `aws-insights-combination(($accountId$) ,($region$), "-mon@d")`
+            ]]>
+        </query>
+        <earliest>-mon@d</earliest>
+        <latest>now</latest>
+    </search>
+    <row>
+        <panel>
+            <title>Insights by Account</title>
+            <chart>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            timechart span=1d sum(count) by account_id
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">column</option>
+                <option name="charting.axisTitleY.text">Count</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.legend.placement">none</option>
+                <option name="charting.legend.masterLegend">null</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.legend.placement">right</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-insights-combination((account_id="$click.name2$") ,($region$), "$earliest$")`&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <title>Insights by Region</title>
+            <chart>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search insights!="IAM"
+                            | timechart span=1d sum(count) by region
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">column</option>
+                <option name="charting.axisTitleY.text">Count</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.legend.placement">none</option>
+                <option name="charting.legend.masterLegend">null</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.legend.placement">right</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-insights-combination(($accountId$) ,(region="$click.name2$"), "$earliest$")`| search insights!="IAM"&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <title>Insights by Service</title>
+            <chart>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            timechart span=1d sum(count) by insights
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">column</option>
+                <option name="charting.axisTitleY.text">Count</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.legend.placement">none</option>
+                <option name="charting.legend.masterLegend">null</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.legend.placement">right</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-insights-combination(($accountId$) ,($region$), "$earliest$")`| search insights="$click.name2$"
+                            &earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+    </row>
+</form>

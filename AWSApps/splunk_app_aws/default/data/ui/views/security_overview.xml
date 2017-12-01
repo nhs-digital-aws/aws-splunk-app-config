@@ -1,0 +1,260 @@
+<form script="base_page.js">
+    <label>Security Overview</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="notable" searchWhenChanged="true">
+            <label>Notable</label>
+            <default>1</default>
+            <choice value="0">False</choice>
+            <choice value="1">True</choice>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+
+    <search id="baseCloudTrailSearch">
+        <query>
+            | savedsearch "CloudTrail Base Search"
+            | search $accountId$ $region$
+            | `cloudtrail_service("*", $notable$)`
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <panel>
+            <single>
+                <title>IAM Errors</title>
+                <search base="baseCloudTrailSearch">
+                    <query>
+                        `cloudtrail_service("IAM", $notable$)`
+                        | stats sum(count) as count, sum(errors) as errors, sum(Unauthorized) as Unauthorized
+                        | nadefault errors count
+                        | eval _total_field=count
+                    </query>
+                </search>
+                <drilldown>
+                    <link>
+                        iam?latest=$latest$&amp;earliest=$earliest$&amp;form.accountId=$form.accountId$&amp;form.notable=$form.notable$&amp;regions=$form.region$
+                    </link>
+                </drilldown>
+                <option name="field">errors</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>VPC Errors</title>
+                <search base="baseCloudTrailSearch">
+                    <query>
+                        `cloudtrail_service("VPC", $notable$)`
+                        | stats sum(count) as count, sum(errors) as errors, sum(Unauthorized) as Unauthorized
+                        | nadefault errors count
+                        | eval _total_field=count
+                    </query>
+                </search>
+                <drilldown>
+                    <link>
+                        vpcs?latest=$latest$&amp;earliest=$earliest$&amp;form.accountId=$form.accountId$&amp;form.notable=$form.notable$&amp;regions=$form.region$
+                    </link>
+                </drilldown>
+                <option name="field">errors</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Security Group Errors</title>
+                <search base="baseCloudTrailSearch">
+                    <query>
+                        `cloudtrail_service("Security Groups", $notable$)`
+                        | stats sum(count) as count, sum(errors) as errors, sum(Unauthorized) as Unauthorized
+                        | nadefault errors count
+                        | eval _total_field=count
+                    </query>
+                </search>
+                <drilldown>
+                    <link>
+                        security_groups?latest=$latest$&amp;earliest=$earliest$&amp;form.accountId=$form.accountId$&amp;form.notable=$form.notable$&amp;regions=$form.region$
+                    </link>
+                </drilldown>
+                <option name="field">errors</option>
+            </single>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <single>
+                <title>Key Pair Errors</title>
+                <search base="baseCloudTrailSearch">
+                    <query>
+                        `cloudtrail_service("Key Pairs", $notable$)`
+                        | stats sum(count) as count, sum(errors) as errors, sum(Unauthorized) as Unauthorized
+                        | nadefault errors count
+                        | eval _total_field=count
+                    </query>
+                </search>
+                <drilldown>
+                    <link>
+                        key_pairs?latest=$latest$&amp;earliest=$earliest$&amp;form.accountId=$form.accountId$&amp;form.notable=$form.notable$&amp;regions=$form.region$
+                    </link>
+                </drilldown>
+                <option name="field">errors</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Network ACL Errors</title>
+                <search base="baseCloudTrailSearch">
+                    <query>
+                        `cloudtrail_service("VPC", $notable$)`
+                        | search eventName = "*networkacl*"
+                        | stats sum(count) as count, sum(errors) as errors, sum(Unauthorized) as Unauthorized
+                        | nadefault errors count
+                        | eval _total_field=count
+                    </query>
+                </search>
+                <drilldown>
+                    <link>
+                        network_acls?latest=$latest$&amp;earliest=$earliest$&amp;form.accountId=$form.accountId$&amp;form.notable=$form.notable$&amp;regions=$form.region$
+                    </link>
+                </drilldown>
+                <option name="field">errors</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Unauthorized Activity</title>
+                <search base="baseCloudTrailSearch">
+                    <query>
+                        stats sum(count) as count, sum(Unauthorized) as Unauthorized
+                        | nadefault Unauthorized count
+                        | eval _total_field=count
+                    </query>
+                </search>
+                <drilldown>
+                    <link>
+                        user_activity?latest=$latest$&amp;earliest=$earliest$
+                    </link>
+                </drilldown>
+                <option name="field">Unauthorized</option>
+            </single>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <map>
+                <title>Authorized vs Unauthorized IAM Activity</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudtrail($accountId$, $region$)`
+                            | `cloudtrail_service("IAM", $notable$)`
+                            | lookup unauthorized_errorCode errorCode OUTPUT Unauthorized
+                            | fillnull value=false Unauthorized
+                            | stats count count(Unauthorized) as UnauthorizedCount by sourceIPAddress Unauthorized
+                            | eval Unauthorized=if(Unauthorized="true", "Unauthorized", "Authorized")
+                            | iplocation sourceIPAddress
+                            | geostats latfield=lat longfield=lon sum(count) as count by Unauthorized
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="mapping.fieldColors">{Unauthorized:0xd93f3c,Authorized:0x428bca}</option>
+                <option name="height">300</option>
+            </map>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <table>
+                <title>Authorized vs Unauthorized Activity by User</title>
+                <search base="baseCloudTrailSearch">
+                    <query>
+                        <![CDATA[
+                            eval Authorized=count-Unauthorized
+                            | stats sum(Authorized) as Authorized sum(Unauthorized) as Unauthorized by userName
+                            | sort - Unauthorized
+                            | rename userName as "User"
+                        ]]>
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-cloudtrail($accountId$, $region$)` | `cloudtrail_service("*", $notable$)` | lookup unauthorized_errorCode errorCode OUTPUT Unauthorized | search userName=$row.User$ Unauthorized=true&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="count">10</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">true</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="drilldown">row</option>
+                <option name="cell.cellRange">true</option>
+            </table>
+        </panel>
+        <panel>
+            <table>
+                <title>Authorized vs Unauthorized Activity by Event Name</title>
+                <search base="baseCloudTrailSearch">
+                    <query>
+                        <![CDATA[
+                            eval Authorized=count-Unauthorized
+                            | stats sum(Authorized) as Authorized sum(Unauthorized) as Unauthorized by eventName
+                            | sort - Unauthorized
+                            | rename eventName as "Event Name"
+                        ]]>
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-cloudtrail($accountId$, $region$)` eventName=$row.Event Name$ | lookup unauthorized_errorCode errorCode OUTPUT Unauthorized | search Unauthorized=true&$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="count">10</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">true</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="drilldown">row</option>
+                <option name="cell.eventName">Event Name</option>
+                <option name="cell.cellRange">true</option>
+            </table>
+        </panel>
+    </row>
+</form>

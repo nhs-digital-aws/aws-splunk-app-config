@@ -1,0 +1,524 @@
+<form script="MultiSelectHelper.js">
+    <label>Health Overview</label>
+    <fieldset submitButton="false">
+
+        <input type="multiselect" token="host" searchWhenChanged="true">
+            <label>Host</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="host" fieldForLabel="host">
+                <![CDATA[ index=_internal sourcetype=aws:*:log | stats count by host|table host ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>host="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+            <default>All</default>
+        </input>
+
+        <input type="multiselect" token="modinput" searchWhenChanged="true">
+            <label>Input Type</label>
+            <choice value="sourcetype=aws:s3:log OR sourcetype=aws:logs:log OR sourcetype=aws:sqsbaseds3:log OR sourcetype=aws:description:log OR sourcetype=aws:cloudwatch:log">All</choice>
+            <choice value="sourcetype=aws:s3:log">Generic S3</choice>
+            <choice value="sourcetype=aws:logs:log">Incremental S3</choice>
+            <choice value="sourcetype=aws:sqsbaseds3:log">SQS-Based S3</choice>
+            <choice value="sourcetype=aws:description:log">Description</choice>
+            <choice value="sourcetype=aws:cloudwatch:log">Cloudwatch</choice>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <delimiter> OR </delimiter>
+            <default>All</default>
+        </input>
+
+        <input type="multiselect" token="datainput" searchWhenChanged="true" dependsOn="modinput">
+            <label>Input Name</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="datainput" fieldForLabel="datainput_prefix">
+                <![CDATA[
+                index=_internal $modinput$
+                | stats count by datainput
+                | table datainput
+                | rex field=datainput "((?P<datainput_prefix>.*?)_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$)"
+                | fillnull value="" datainput_prefix
+                | eval datainput=if(datainput_prefix!="", datainput_prefix+"_*", datainput)
+                | dedup datainput
+                | table datainput, datainput_prefix
+                | sort datainput
+                ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>datainput="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+            <default>All</default>
+        </input>
+
+        <input type="text" token="key_word" searchWhenChanged="true">
+            <label>Keyword</label>
+            <prefix> "</prefix>
+            <suffix>"</suffix>
+            <default></default>
+        </input>
+
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </default>
+        </input>
+
+    </fieldset>
+
+    <search id="baseErrorSearch">
+        <query>
+            <![CDATA[
+                index="_internal" $host$ $modinput$ $datainput$ $key_word$ level=ERROR
+                | fillnull value="" ErrorCode, ErrorDetail
+                | eval ErrorDetail = if((ErrorDetail == "" or ErrorDetail == "''") and !isnull(message), message, ErrorDetail)
+                | table count by _time, message, host, sourcetype, datainput, ErrorCode, ErrorDetail
+                | eval error_count=1
+                | lookup aws_health_error_type_lookup ErrorCode, ErrorDetail, sourcetype OUTPUT ErrorType
+                | eval ErrorDetail = if(ErrorDetail == message, ErrorDetail, message.":".ErrorDetail)
+            ]]>
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <panel>
+            <title>Errors</title>
+            <single>
+                <title>Total</title>
+                <search base="baseErrorSearch">
+                    <query>
+                        | stats count, sum(error_count) as error_count
+                        | eval error_count=if(isnotnull(error_count), error_count, 0)
+                        | fields error_count
+                        | rename error_count as count
+                    </query>
+                </search>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">block</option>
+                <option name="rangeColors">["0x65a637","0xFF0000"]</option>
+                <option name="rangeValues">[0]</option>
+                <option name="field">count</option>
+                <option name="underLabel">Errors</option>
+                <drilldown>
+                    <link target="_blank">
+                        error_details?latest=$latest$&amp;earliest=$earliest$&amp;form.host=$form.host$&amp;form.modinput=$form.modinput$&amp;form.datainput=$form.datainput$
+                    </link>
+                </drilldown>
+            </single>
+            <single>
+                <title>Configuration</title>
+                <search base="baseErrorSearch">
+                    <query>
+                        | search ErrorType=configuration
+                        | stats count, sum(error_count) as error_count
+                        | eval error_count=if(isnotnull(error_count), error_count, 0)
+                        | fields error_count
+                        | rename error_count as count
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        error_details?latest=$latest$&amp;earliest=$earliest$&amp;
+                        form.host=$form.host$&amp;form.modinput=$form.modinput$&amp;form.datainput=$form.datainput$&amp;form.errortype=configuration
+                    </link>
+                </drilldown>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">block</option>
+                <option name="rangeColors">["0x65a637","0xFF0000"]</option>
+                <option name="rangeValues">[0]</option>
+                <option name="field">count</option>
+                <option name="underLabel">Errors</option>
+            </single>
+            <single>
+                <title>Authentication</title>
+                <search base="baseErrorSearch">
+                    <query>
+                        | search ErrorType=authentication
+                        | stats count, sum(error_count) as error_count
+                        | eval error_count=if(isnotnull(error_count), error_count, 0)
+                        | fields error_count
+                        | rename error_count as count
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        error_details?latest=$latest$&amp;earliest=$earliest$&amp;
+                        form.host=$form.host$&amp;form.modinput=$form.modinput$&amp;form.datainput=$form.datainput$&amp;form.errortype=authentication
+                    </link>
+                </drilldown>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">block</option>
+                <option name="rangeColors">["0x65a637","0xFF0000"]</option>
+                <option name="rangeValues">[0]</option>
+                <option name="field">count</option>
+                <option name="underLabel">Errors</option>
+            </single>
+            <single>
+                <title>Throttling</title>
+                <search base="baseErrorSearch">
+                    <query>
+                        | search ErrorType=throttling
+                        | stats count, sum(error_count) as error_count
+                        | eval error_count=if(isnotnull(error_count), error_count, 0)
+                        | fields error_count
+                        | rename error_count as count
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        error_details?latest=$latest$&amp;earliest=$earliest$&amp;
+                        form.host=$form.host$&amp;form.modinput=$form.modinput$&amp;form.datainput=$form.datainput$&amp;form.errortype=throttling
+                    </link>
+                </drilldown>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">block</option>
+                <option name="rangeColors">["0x65a637","0xFF0000"]</option>
+                <option name="rangeValues">[0]</option>
+                <option name="field">count</option>
+                <option name="underLabel">Errors</option>
+            </single>
+            <single>
+                <title>Network</title>
+                <search base="baseErrorSearch">
+                    <query>
+                        | search ErrorType=network
+                        | stats count, sum(error_count) as error_count
+                        | eval error_count=if(isnotnull(error_count), error_count, 0)
+                        | fields error_count
+                        | rename error_count as count
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        error_details?latest=$latest$&amp;earliest=$earliest$&amp;
+                        form.host=$form.host$&amp;form.modinput=$form.modinput$&amp;form.datainput=$form.datainput$&amp;form.errortype=network
+                    </link>
+                </drilldown>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">block</option>
+                <option name="rangeColors">["0x65a637","0xFF0000"]</option>
+                <option name="rangeValues">[0]</option>
+                <option name="field">count</option>
+                <option name="underLabel">Errors</option>
+            </single>
+            <single>
+                <title>Others</title>
+                <search base="baseErrorSearch">
+                    <query>
+                        | search ErrorType=uncategorized
+                        | stats count, sum(error_count) as error_count
+                        | eval error_count=if(isnotnull(error_count), error_count, 0)
+                        | fields error_count
+                        | rename error_count as count
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        error_details?latest=$latest$&amp;earliest=$earliest$&amp;
+                        form.host=$form.host$&amp;form.modinput=$form.modinput$&amp;form.datainput=$form.datainput$&amp;form.errortype=uncategorized
+                    </link>
+                </drilldown>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">block</option>
+                <option name="rangeColors">["0x65a637","0xFF0000"]</option>
+                <option name="rangeValues">[0]</option>
+                <option name="field">count</option>
+                <option name="underLabel">Errors</option>
+            </single>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Errors by Input Types Over Time</title>
+                <search base="baseErrorSearch">
+                    <query>
+                        <![CDATA[
+                            | rename error_count as count
+                            | lookup aws_log_sourcetype_modinput_lookup sourcetype OUTPUT modinput
+                            | timechart sum(count) by modinput
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Errors (count)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Errors by Hosts Over Time</title>
+                <search base="baseErrorSearch">
+                    <query>
+                        <![CDATA[
+                            | rename error_count as count
+                            | timechart sum(count) by host
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Errors (count)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Errors by Input Names Over Time</title>
+                <search base="baseErrorSearch">
+                    <query>
+                        <![CDATA[
+                            | rename error_count as count
+                            | timechart sum(count) by datainput
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Errors (count)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Errors by Categories Over Time</title>
+                <search base="baseErrorSearch">
+                    <query>
+                        <![CDATA[
+                            | rename error_count as count
+                            | timechart sum(count) by ErrorType
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Errors (count)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+
+    <search id="baseSizeSearch">
+        <query>
+            <![CDATA[
+                index="_internal" $host$ $modinput$ $datainput$ $key_word$ (action=index OR message="Sent data for indexing.")
+                | eval size = size / 1024 / 1024
+                | stats count by _time, host, sourcetype, datainput, size
+                | eval size=size*count
+                | eval size=round(size,2)
+            ]]>
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Throughputs (MB) by Hosts Over Time</title>
+                <search base="baseSizeSearch">
+                    <query>
+                        <![CDATA[
+                            | timechart sum(size) by host
+                            | fillnull value=0
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Throughput (MB)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+
+        <panel>
+            <chart>
+                <title>Throughputs (MB) by Input Types Over Time</title>
+                <search base="baseSizeSearch">
+                    <query>
+                        <![CDATA[
+                        | lookup aws_log_sourcetype_modinput_lookup sourcetype OUTPUT modinput
+                        | timechart sum(size) by modinput
+                        | fillnull value=0
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Throughput (MB)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+
+        <panel>
+            <chart>
+                <title>Throughputs(MB) by Input Names Over Time</title>
+                <search base="baseSizeSearch">
+                    <query>
+                        <![CDATA[
+                        | timechart sum(size) by datainput
+                        | fillnull value=0
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Throughput (MB)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+
+    </row>
+
+</form>

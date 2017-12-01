@@ -1,0 +1,18 @@
+[
+    {
+        "stanzas":[
+            {
+              "name": "aws-account-0",
+              "key_id": "ABCDEFGHIJKLMNOPQRST",
+              "secret_key": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmn",
+              "category": "1"
+            },
+            {
+              "name": "aws-account-1",
+              "key_id": "abcdefghijklmnopqrst",
+              "secret_key": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN",
+              "category": "1"
+            }
+        ]
+    }
+]

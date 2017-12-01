@@ -1,0 +1,20 @@
+# This file follows the ua-parser configuration format
+# All the rules defined in this file will take precedence over rules included in ua-parser
+# see https://github.com/ua-parser/uap-core/ for details
+
+user_agent_parsers:
+  # @note: Apple TV player used by applications to play medias see AKAPP-108
+  - regex: '(AppleCoreMedia)(?:/(\d+)\.(\d+)\.?\d+.*Apple\s?TV?)?'
+    family_replacement: 'Apple TV native player'
+
+os_parsers:
+
+  # @note: Anvato SDK format
+  - regex: '(iPhone|iPad|iPod).*[iI]OS (\d+)\.(\d+)'
+    os_replacement: 'iOS'
+
+  # @note: Apple TV use the same regexp as ua-parser but replace ATV by Apple TV
+  - regex: '(Apple\s?TV)(?:/(\d+)\.(\d+))?'
+    os_replacement: 'Apple TV OS X'
+
+device_parsers:

@@ -1,0 +1,107 @@
+<form script="RI_planner.js">
+    <label>Reserved Instance Planner</label>
+
+    <fieldset submitButton="True">
+        <input type="dropdown" token="accountId" searchWhenChanged="True">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <selectFirstChoice>true</selectFirstChoice>
+            <fieldForLabel>title</fieldForLabel>
+            <fieldForValue>aws_account_id</fieldForValue>
+            <search base="param">
+                <query>
+                    stats count by aws_account_id
+                    | lookup account_name LinkedAccountId as aws_account_id OUTPUT LinkedAccountName as name
+                    | eval title=aws_account_id." (".name.")"
+                    | eval title=if(isnull(title),aws_account_id,title)
+                </query>
+            </search>
+            <prefix>aws_account_id="</prefix>
+            <suffix>"</suffix>
+        </input>
+
+        <input depends="$accountId$" type="multiselect" token="region" searchWhenChanged="True">
+            <label>Region</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <fieldForLabel>title</fieldForLabel>
+            <fieldForValue>region</fieldForValue>
+            <search base="param">
+                <query>
+                    search $accountId$
+                    | stats count by region, regionLabel
+                    | eval title=if(isnull(regionLabel), region, regionLabel)
+                </query>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input  depends="$accountId$, $region$" type="dropdown" token="platform">
+            <label>Platform</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <fieldForLabel>platformLabel</fieldForLabel>
+            <fieldForValue>platform</fieldForValue>
+            <search base="param">
+                <query>
+                    search $accountId$ $region$
+                    | stats count by platform, platformLabel
+                </query>
+            </search>
+        </input>
+        <input  depends="$accountId$, $region$" type="dropdown" token="tenancy">
+            <label>Tenancy</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <fieldForLabel>tenancyLabel</fieldForLabel>
+            <fieldForValue>tenancy</fieldForValue>
+            <search base="param">
+                <query>
+                    search $accountId$ $region$
+                    | stats count by tenancy, tenancyLabel
+                </query>
+            </search>
+        </input>
+        <input depends="$accountId$, $region$, $platform$, $tenancy$" type="multiselect" token="instanceType">
+            <label>Instance type</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <fieldForLabel>instance_type</fieldForLabel>
+            <fieldForValue>instance_type</fieldForValue>
+            <search base="param">
+                <query>
+                    search $accountId$ $region$ platform="$platform$" tenancy="$tenancy$"
+                    | stats count by instance_type
+                </query>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>instance_type="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="base" id="base">
+            <label>Basis for insight</label>
+            <default>history</default>
+            <choice value="history">History</choice>
+            <choice value="prediction">Prediction</choice>
+        </input>
+        <input type="dropdown" token="payment">
+            <label>Payment option (one-year term)</label>
+            <default>All upfront</default>
+            <choice value="all">All upfront</choice>
+            <choice value="partial">Partial upfront</choice>
+            <choice value="no">No upfront</choice>
+        </input>
+    </fieldset>
+
+    <row>
+        <panel>
+            <html id="container">
+            </html>
+        </panel>
+    </row>
+</form>

@@ -1,0 +1,82 @@
+<form script="RI_planner_detail.js">
+    <label>Reserved Instance Planner Details</label>
+    <row>
+        <panel>
+            <html>
+                <div id="headerContainer"></div>
+            </html>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <single id="existingRi">
+                <title>Existing Reserved Instances</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | makeresults | eval boughtRI="$boughtRI$"
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">boughtRI</option>
+                <option name="numberPrecision">0.00</option>
+                <option name="showSparkline">false</option>
+                <option name="showTrendIndicator">false</option>
+                <option name="drilldown">none</option>
+                 <option name="underLabel">Count</option>
+            </single>
+        </panel>
+        <panel>
+            <single id="ri">
+                <title>Optimal Reserved Instances</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | makeresults | eval ri="$ri$"
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">ri</option>
+                <option name="numberPrecision">0.00</option>
+                <option name="showSparkline">false</option>
+                <option name="showTrendIndicator">false</option>
+                <option name="drilldown">all</option>
+                 <option name="underLabel">Count</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?earliest=$earliest$&latest=$latest$&q=$ihSearchSPL$ | eval ri=$ri$ | rename current_ih as "Instance hour count", ri as "Optimal RI"
+                        ]]>
+                    </link>
+                </drilldown>
+            </single>
+        </panel>
+        <panel>
+            <single id="riCost">
+                <title>Estimated Cost</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | makeresults | eval riCost="$onDemandCost$" | append [| makeresults | eval riCost="$riCost$"]
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">riCost</option>
+                <option name="trendColorInterpretation">standard</option>
+                <option name="trendDisplayMode">percent</option>
+                <option name="trendInterval">-1h</option>
+                <option name="showSparkline">false</option>
+                <option name="drilldown">none</option>
+                <option name="unit">$</option>
+                <option name="unitPosition">before</option>
+            </single>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <html>
+                <div id="chartContainer"></div>
+            </html>
+        </panel>
+    </row>
+</form>

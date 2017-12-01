@@ -1,0 +1,157 @@
+[app/install/install_source_checksum]
+version = 6.6.0
+modtime = 1511780268.443849000
+
+[aws_account_ext/###ROLEID###]
+owner = admin
+version = 6.6.0
+modtime = 1511781827.069296000
+
+[inputs/aws_s3%3A%2F%2FCloudTrailMonitor]
+owner = admin
+version = 6.6.0
+modtime = 1511781889.492274000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_29a94fda-ae71-49c1-b40a-8379a52e7945]
+owner = admin
+version = 6.6.0
+modtime = 1511781919.879686000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_bb9b2ae2-75d3-4ba0-aaa3-087e28e06db2]
+owner = admin
+version = 6.6.0
+modtime = 1511781921.174197000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_82b7e3f9-1e5c-4daf-9b56-8b0ca2b5092a]
+owner = admin
+version = 6.6.0
+modtime = 1511781922.591235000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_c8472734-1b64-4b9b-83b4-951d18c89e48]
+owner = admin
+version = 6.6.0
+modtime = 1511781924.248131000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_3101654c-ed0d-4f89-8aa4-afb4e6bed43d]
+owner = admin
+version = 6.6.0
+modtime = 1511781925.500235000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_74482b59-ef47-4e9b-8647-e6a254939a21]
+owner = admin
+version = 6.6.0
+modtime = 1511781926.760298000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_fe54424c-0955-4a40-93b3-93f0f829a80d]
+owner = admin
+version = 6.6.0
+modtime = 1511781928.214484000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_dbb14d59-fe5e-4514-933a-a0ea24a31604]
+owner = admin
+version = 6.6.0
+modtime = 1511781929.639796000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_8fd0ea4d-cad8-4667-a95b-035f0dd861c3]
+owner = admin
+version = 6.6.0
+modtime = 1511781930.942535000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_26d67f69-ddab-408b-8b42-ed53c60ac720]
+owner = admin
+version = 6.6.0
+modtime = 1511781932.215750000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_cf4ec325-cd3b-4703-903d-c624f6285c30]
+owner = admin
+version = 6.6.0
+modtime = 1511781933.497756000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_17d8c450-40e4-454d-8bf8-e9b3815327cb]
+owner = admin
+version = 6.6.0
+modtime = 1511781934.768450000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_e6f4477d-c0e9-43fe-8325-b9b47655a485]
+owner = admin
+version = 6.6.0
+modtime = 1511781936.052546000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_829651a1-3af2-4375-a38d-419b0be81b18]
+owner = admin
+version = 6.6.0
+modtime = 1511781937.328492000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_af20d3a7-551a-4231-86d7-162d3f82823b]
+owner = admin
+version = 6.6.0
+modtime = 1511781938.610021000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_9d7fed70-3e50-4ea2-b363-0f5b13de2b17]
+owner = admin
+version = 6.6.0
+modtime = 1511781940.012996000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_bda63b28-5b2e-4c6a-87cd-a7030be9c284]
+owner = admin
+version = 6.6.0
+modtime = 1511781941.348079000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_83ae0e35-2359-4c62-be3e-0c4012e75b85]
+owner = admin
+version = 6.6.0
+modtime = 1511781942.793633000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_5b59d91f-e601-4f16-b2fe-41ff868742d5]
+owner = admin
+version = 6.6.0
+modtime = 1511781944.104976000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_3fd17df2-e47b-402c-b8e8-0ad405b83649]
+owner = admin
+version = 6.6.0
+modtime = 1511781945.401530000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_1e3ba270-52a2-4064-a9d0-4d1a21e9831b]
+owner = admin
+version = 6.6.0
+modtime = 1511781946.735192000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_9d55da56-9600-4d18-ad3f-83a826181be6]
+owner = admin
+version = 6.6.0
+modtime = 1511781948.251720000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_ffbead63-4f9e-4c7b-85e7-e214aef7c159]
+owner = admin
+version = 6.6.0
+modtime = 1511781949.835446000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_6c71d13e-ef8a-45d4-b5dd-e139cad2f14b]
+owner = admin
+version = 6.6.0
+modtime = 1511781951.155917000
+
+[inputs/aws_cloudwatch%3A%2F%2FCloudwatchMonitoring_8f3e3763-7dbc-47b0-af6f-bddccad169ca]
+owner = admin
+version = 6.6.0
+modtime = 1511781952.501055000
+
+[inputs/aws_sqs_based_s3%3A%2F%2FConfigMonitoring]
+owner = admin
+version = 6.6.0
+modtime = 1511782594.151933000
+
+[aws_description_tasks/DescriptionMonitoring]
+owner = admin
+version = 6.6.0
+modtime = 1511782676.701084000
+
+[aws_inspector_tasks/InspectorMonitoring]
+owner = admin
+version = 6.6.0
+modtime = 1511782712.759098000
+
+[savedsearches/Addon%20Metadata%20-%20Summarize%20AWS%20Inputs]
+version = 6.6.0
+modtime = 1511783377.878314000

@@ -1,0 +1,3 @@
+{"Name": "ta-cloudtrail-singapore", "account_id": "000000000000", "CreationDate": "2017-03-24T03:51:22.000Z", "LocationConstraint": "ap-southeast-1", "LoggingEnabled": {"TargetBucket": "911s3accesslog", "TargetPrefix": "logs/"}}
+{"Name": "splunk-mobile", "account_id": "000000000000", "CreationDate": "2016-07-16T10:15:26.000Z", "LocationConstraint": "ap-southeast-1", "LoggingEnabled": {"TargetBucket": "911s3accesslog", "TargetPrefix": "logs/"}}
+{"Name": "config-bucket-ap", "account_id": "000000000000", "CreationDate": "2017-05-26T09:47:11.000Z", "LocationConstraint": "ap-southeast-1", "LoggingEnabled": {"TargetBucket": "911s3accesslog", "TargetPrefix": "logs/"}}

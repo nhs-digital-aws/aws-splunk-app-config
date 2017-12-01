@@ -1,0 +1,252 @@
+<form script="detailed_billing.js">
+    <label>Historical Detailed Bills</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="billingAccountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <default>*</default>
+            <fieldForValue>LinkedAccountId</fieldForValue>
+            <fieldForLabel>Account</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[
+                        | tstats summariesonly=t count FROM datamodel=Detailed_Billing by detailed_billing.LinkedAccountId
+                        | rename detailed_billing.LinkedAccountId as LinkedAccountId
+                        | `aws-accountid-to-name`
+                    ]]>
+                </query>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>detailed_billing.LinkedAccountId="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <fieldForValue>region</fieldForValue>
+            <fieldForLabel>label</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[ |inputlookup regions ]]>
+                </query>
+            </search>
+            <delimiter>|</delimiter>
+        </input>
+        <input id="awstags" token="tags">
+        </input>
+        <html>
+            <div id="timerange-from"></div>
+        </html>
+        <html>
+            <div id="timerange-to"></div>
+        </html>
+        <html>
+            <div id="oneTime"></div>
+        </html>
+    </fieldset>
+
+    <search id="baseSearch">
+        <query>
+            <![CDATA[
+                | tstats summariesonly=t count sum(detailed_billing.BlendedCost) as Cost FROM datamodel=Detailed_Billing where $monthSpl$ $billingAccountId$ $regionDetailedBilling$ $productNameDetailedBilling$ $operationDetailedBilling$ by detailed_billing.LinkedAccountId detailed_billing.InvoiceID
+                | fieldformat Cost=tostring(round(Cost, 2),"commas")
+                | eventstats sum(count) as count by detailed_billing.InvoiceID
+            ]]>
+        </query>
+    </search>
+
+    <search id="invoiceSearch" base="baseSearch">
+        <query>
+            <![CDATA[
+                search count > 2
+            ]]>
+        </query>
+    </search>
+
+    <search id="onetimeSearch" base="baseSearch">
+        <query>
+            <![CDATA[
+                search count <= 2
+            ]]>
+        </query>
+    </search>
+
+    <row>
+        <panel>
+            <title>Cost Analysis</title>
+            <input type="dropdown" token="productName" searchWhenChanged="true">
+                <label>Service</label>
+                <choice value="*">All</choice>
+                <selectFirstChoice>true</selectFirstChoice>
+                <populatingSearch fieldForValue="detailed_billing.ProductName" fieldForLabel="detailed_billing.ProductName">
+                    <![CDATA[
+                        | tstats summariesonly=t count(detailed_billing.ProductName) FROM datamodel=Detailed_Billing where $monthSpl$ $billingAccountId$ $regionDetailedBilling$ by detailed_billing.ProductName
+                    ]]>
+                </populatingSearch>
+            </input>
+            <input type="dropdown" token="operation" searchWhenChanged="true">
+                <label>Operation</label>
+                <choice value="*">All</choice>
+                <selectFirstChoice>true</selectFirstChoice>
+                <populatingSearch fieldForValue="detailed_billing.Operation" fieldForLabel="detailed_billing.Operation">
+                    <![CDATA[
+                        | tstats summariesonly=t count(detailed_billing.Operation) FROM datamodel=Detailed_Billing where $monthSpl$ $billingAccountId$ $regionDetailedBilling$ $productNameDetailedBilling$ by detailed_billing.Operation
+                    ]]>
+                </populatingSearch>
+            </input>
+            <input type="dropdown" token="cost.groupby">
+                <label>Group By</label>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | `aws-billing-datamodel-tags`
+                            | eval title = "Tag: ".title
+                            | append [| makeresults | eval title="Availability Zone", key="AvailabilityZone"]
+                        ]]>
+                    </query>
+                </search>
+                <fieldForLabel>title</fieldForLabel>
+                <fieldForValue>key</fieldForValue>
+                <choice value="none">None</choice>
+                <choice value="LinkedAccountId">Account ID</choice>
+                <choice value="ProductName">Product Name</choice>
+                <choice value="Operation">Operation</choice>
+                <default>none</default>
+                <initialValue>none</initialValue>
+            </input>
+            <single>
+                <title>Total Cost</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats summariesonly=t sum(detailed_billing.BlendedCost) as "Total Cost" FROM datamodel=Detailed_Billing where $monthSpl$ $billingAccountId$ $regionDetailedBilling$ $productNameDetailedBilling$ $operationDetailedBilling$ $onetimeDetailedBilling$ $tags|tag2detailed_billing$
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">Total Cost</option>
+            </single>
+            <single>
+                <title>Total Onetime Payments Cost</title>
+                <search base="onetimeSearch">
+                    <query>
+                        <![CDATA[
+                            stats sum(Cost) as "Total Cost"
+                            | nadefault "Total Cost"
+                        ]]>
+                    </query>
+                </search>
+                <drilldown>
+                    <set token="onetime">Y</set>
+                </drilldown>
+                <option name="field">Total Cost</option>
+            </single>
+            <table depends="$onetime$">
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            eval "Onetime Payment?"=if(count<=2, "Y", "N")
+                            | sort -"Onetime Payment?" -Cost
+                            | rename detailed_billing.LinkedAccountId as "Account ID" detailed_billing.InvoiceID as "Invoice ID" count as "Billing Items"
+                        ]]>
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-billing-details("*")` InvoiceID="$row.Invoice ID$"
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="drilldown">row</option>
+                <option name="count">10</option>
+            </table>
+            <chart>
+                <title>Cost Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats summariesonly=t sum(detailed_billing.BlendedCost) as cost FROM datamodel=Detailed_Billing where $monthSpl$ $billingAccountId$ $regionDetailedBilling$ $productNameDetailedBilling$ $operationDetailedBilling$ $onetimeDetailedBilling$ $tags|tag2detailed_billing$ $cost.groupby|groupby2costspl$ | eval Cost=round(Cost, 2)
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY.text">Cost</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">false</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <title>Total Cost Group By</title>
+            <input type="multiselect" token="totalcost.groupby">
+                <label></label>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | `aws-billing-datamodel-tags`
+                            | eval title = "Tag: ".title
+                            | append [makeresults]
+                        ]]>
+                    </query>
+                </search>
+                <fieldForLabel>title</fieldForLabel>
+                <fieldForValue>key</fieldForValue>
+                <choice value="LinkedAccountId">Account ID</choice>
+                <choice value="ProductName">Product Name</choice>
+                <choice value="AvailabilityZone">Availability Zone</choice>
+                <choice value="Operation">Operation</choice>
+                <initialValue>ProductName</initialValue>
+                <delimiter>|</delimiter>
+            </input>
+            <table>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats summariesonly=t sum(detailed_billing.BlendedCost) as Cost FROM datamodel=Detailed_Billing where $monthSpl$ $billingAccountId$ $regionDetailedBilling$ $productNameDetailedBilling$ $operationDetailedBilling$ $onetimeDetailedBilling$ $tags|tag2detailed_billing$ $totalcost.groupby|costbygroups$
+                            | sort -Cost
+                            | fieldformat Cost=tostring(round(Cost, 2),"commas")
+                            | eventstats sum(Cost) as total
+                            | eval Percentage=tostring(round(100*Cost/total, 2))+"%"
+                            | fields - total
+                        ]]>
+                    </query>
+                </search>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="drilldown">cell</option>
+                <option name="count">10</option>
+                <option name="cell.percentage">Percentage</option>
+            </table>
+        </panel>
+    </row>
+</form>

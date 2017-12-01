@@ -1,0 +1,195 @@
+<form script="budget_planner.js">
+    <label>Budget Planner</label>
+    <fieldset submitButton="false">
+        <input type="dropdown" token="source" searchWhenChanged="true">
+            <label>Data Source</label>
+            <selectFirstChoice>true</selectFirstChoice>
+            <choice value="monthly">Monthly Billing</choice>
+            <choice value="detailed">Detailed Billing</choice>
+            <choice value="cloudwatch">Cloudwatch (Estimated)</choice>
+        </input>
+        <input id="accountInput" type="dropdown" token="billingAccountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <selectFirstChoice>true</selectFirstChoice>
+            <fieldForValue>LinkedAccountId</fieldForValue>
+            <fieldForLabel>Account</fieldForLabel>
+            <search base="accountSearch">
+            </search>
+        </input>
+        <html>
+            <div id="timerange-from"></div>
+        </html>
+        <html>
+            <div id="timerange-to"></div>
+        </html>
+        <input id="budgetText" type="text" token="budget" searchWhenChanged="false">
+            <label>Monthly Budget</label>
+        </input>
+        <html >
+            <button id="submitbudget" class="btn btn-primary submit">Submit</button>
+        </html>
+    </fieldset>
+
+    <row depends="$budget$, $months$">
+        <panel>
+            <title>Total Budget</title>
+            <single>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | makeresults count = 1 | eval total = $budget$ * $months$
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="field">total</option>
+            </single>
+        </panel>
+        <panel>
+            <title>Monthly Budget</title>
+            <single>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | makeresults count = 1 | eval monthly = $budget$
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="field">monthly</option>
+            </single>
+        </panel>
+        <panel>
+            <title>Remaining Total Budget</title>
+            <single>
+                <search base="baseBudget">
+                    <query>
+                        <![CDATA[
+                            addcoltotals labelfield=Total cost
+                            | search Total=Total
+                            | eval result=$budget$ * $months$ - cost
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">result</option>
+            </single>
+        </panel>
+    </row>
+
+    <row depends="$budget$, $months$">
+        <panel>
+            <chart>
+                <title>Budget Burndown</title>
+                <search base="baseBudget">
+                    <query>
+                        accum cost as acost
+                        | eventstats sum(budget) as total 
+                        | eval "Remaining Budget" = total-acost
+                        | rename cost as "Cost"
+                        | fields - budget total acost
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.overlayFields">"Remaining Budget"</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.fieldColors">{Remaining Budget:0x6ab7c7}</option>
+                <option name="charting.legend.placement">bottom</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Budget</title>
+                <search base="baseBudget">
+                    <query>
+                        eval cost = round(cost, 0)
+                        | eval budget = round($budget$, 0)
+                        | fillnull value=0 cost
+                        | eval balance=budget-cost
+                        | eventstats sum(balance) as total
+                        | eval monthly=if($remainMonth$&gt;0,total/$remainMonth$,"N/A")
+                        | eval monthly=if(_time&gt;now(),monthly,if(strftime(_time, "%Y-%m")=strftime(now(), "%Y-%m"), monthly, ""))
+                        | eval monthly=round(monthly)
+                        | rename cost as "Cost", budget as "Budget", monthly as "Remaining Monthly Budget"
+                        | fields - total balance
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">bottom</option>
+                <option name="charting.fieldColors">{Budget:0x6ab7c7}</option>
+                <option name="charting.chart.overlayFields">Budget,"Remaining Monthly Budget"</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row depends="$budget$, $months$">
+        <panel>
+            <table id="monthTable">
+                <title>Month-over-month Budget</title>
+                <search base="baseBudget">
+                    <query>
+                        accum cost as "Accumulated Cost"
+                        | accum budget as "Accumulated Budget"
+                        | eval Balance = budget - cost
+                        | accum Balance as "Accumulated Balance"
+                        | rename cost as Cost, budget as Budget
+                        | fieldformat Cost=tostring(Cost,"commas")
+                        | fieldformat Budget=tostring(Budget,"commas")
+                        | fieldformat Balance=tostring(Balance,"commas")
+                        | fieldformat "Accumulated Cost"=tostring('Accumulated Cost',"commas")
+                        | fieldformat "Accumulated Balance"=tostring('Accumulated Balance',"commas")
+                        | eval Month = strftime(_time, "%Y-%m")
+                        | table Month Cost budget Balance "Accumulated Cost" "Accumulated Balance"
+                    </query>
+                </search>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="drilldown">row</option>
+                <option name="count">12</option>
+            </table>
+        </panel>
+    </row>
+</form>

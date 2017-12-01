@@ -1,0 +1,421 @@
+{
+  "modelName": "S3_Access_Log",
+  "displayName": "S3 Access Log",
+  "description": "",
+  "objectSummary": {
+    "Event-Based": 1,
+    "Transaction-Based": 0,
+    "Search-Based": 0
+  },
+  "objects": [
+    {
+      "objectName": "S3_Access_Log",
+      "displayName": "S3 Access Log",
+      "parentName": "BaseEvent",
+      "fields": [
+        {
+          "fieldName": "bucket_name",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bucket_name",
+          "comment": ""
+        },
+        {
+          "fieldName": "bucket_owner",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bucket_owner",
+          "comment": ""
+        },
+        {
+          "fieldName": "bytes_sent",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bytes_sent",
+          "comment": ""
+        },
+        {
+          "fieldName": "change_type",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "change_type",
+          "comment": ""
+        },
+        {
+          "fieldName": "error_code",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "error_code",
+          "comment": ""
+        },
+        {
+          "fieldName": "http_status",
+          "owner": "S3_Access_Log",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "http_status",
+          "comment": ""
+        },
+        {
+          "fieldName": "index",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "index",
+          "comment": ""
+        },
+        {
+          "fieldName": "key",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "key",
+          "comment": ""
+        },
+        {
+          "fieldName": "object_size",
+          "owner": "S3_Access_Log",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "object_size",
+          "comment": ""
+        },
+        {
+          "fieldName": "operation",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "operation",
+          "comment": ""
+        },
+        {
+          "fieldName": "referrer",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "referrer",
+          "comment": ""
+        },
+        {
+          "fieldName": "remote_ip",
+          "owner": "S3_Access_Log",
+          "type": "ipv4",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "remote_ip",
+          "comment": ""
+        },
+        {
+          "fieldName": "request_id",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "request_id",
+          "comment": ""
+        },
+        {
+          "fieldName": "request_time",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "request_time",
+          "comment": ""
+        },
+        {
+          "fieldName": "request_uri",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "request_uri",
+          "comment": ""
+        },
+        {
+          "fieldName": "requester",
+          "owner": "S3_Access_Log",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "requester",
+          "comment": ""
+        },
+        {
+          "fieldName": "total_time",
+          "owner": "S3_Access_Log",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "total_time",
+          "comment": ""
+        },
+        {
+          "fieldName": "turn_around_time",
+          "owner": "S3_Access_Log",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "turn_around_time",
+          "comment": ""
+        },
+        {
+          "fieldName": "_time",
+          "owner": "BaseEvent",
+          "type": "timestamp",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "_time",
+          "comment": ""
+        },
+        {
+          "fieldName": "host",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "host",
+          "comment": ""
+        },
+        {
+          "fieldName": "source",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "source",
+          "comment": ""
+        },
+        {
+          "fieldName": "sourcetype",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "sourcetype",
+          "comment": ""
+        }
+      ],
+      "calculations": [
+        {
+          "outputFields": [
+            {
+              "fieldName": "user_agent",
+              "owner": "S3_Access_Log",
+              "type": "string",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "user_agent",
+              "comment": ""
+            }
+          ],
+          "calculationID": "h1ufbef9tu3m1jor",
+          "owner": "S3_Access_Log",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "replace(user_agent, \"/[0-9.]+\", \"\")"
+        },
+        {
+        "outputFields": [
+          {
+            "fieldName": "account_id",
+            "owner": "S3_Access_Log",
+            "type": "string",
+            "fieldSearch": "",
+            "required": false,
+            "multivalue": false,
+            "hidden": false,
+            "editable": true,
+            "displayName": "account_id",
+            "comment": "",
+            "lookupOutputFieldName": "account_id"
+          }
+        ],
+        "calculationType": "Lookup",
+        "lookupName": "s3_buckets",
+        "comment": "",
+        "lookupInputs": [
+          {
+            "inputField": "bucket_name",
+            "lookupField": "bucket_name"
+          }
+        ],
+        "owner": "S3_Access_Log",
+        "calculationID": "g33qygyndkky8roo0r8u84cxr",
+        "editable": true
+    },
+        {
+          "outputFields": [
+            {
+              "fieldName": "remote_ip_lon",
+              "owner": "S3_Access_Log",
+              "type": "number",
+              "fieldSearch": "remote_ip_lon=*",
+              "required": true,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "lon",
+              "comment": "",
+              "lookupOutputFieldName": "lon"
+            },
+            {
+              "fieldName": "remote_ip_lat",
+              "owner": "S3_Access_Log",
+              "type": "number",
+              "fieldSearch": "remote_ip_lat=*",
+              "required": true,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "lat",
+              "comment": "",
+              "lookupOutputFieldName": "lat"
+            },
+            {
+              "fieldName": "remote_ip_City",
+              "owner": "S3_Access_Log",
+              "type": "string",
+              "fieldSearch": "remote_ip_City=*",
+              "required": true,
+              "multivalue": false,
+              "hidden": true,
+              "editable": true,
+              "displayName": "remote_ip_City",
+              "comment": "",
+              "lookupOutputFieldName": "City"
+            },
+            {
+              "fieldName": "remote_ip_Region",
+              "owner": "S3_Access_Log",
+              "type": "string",
+              "fieldSearch": "remote_ip_Region=*",
+              "required": true,
+              "multivalue": false,
+              "hidden": true,
+              "editable": true,
+              "displayName": "remote_ip_Region",
+              "comment": "",
+              "lookupOutputFieldName": "Region"
+            },
+            {
+              "fieldName": "remote_ip_Country",
+              "owner": "S3_Access_Log",
+              "type": "string",
+              "fieldSearch": "remote_ip_Country=*",
+              "required": true,
+              "multivalue": false,
+              "hidden": true,
+              "editable": true,
+              "displayName": "remote_ip_Country",
+              "comment": "",
+              "lookupOutputFieldName": "Country"
+            }
+          ],
+          "inputField": "remote_ip",
+          "calculationType": "GeoIP",
+          "comment": "",
+          "owner": "S3_Access_Log",
+          "calculationID": "zyun7092to4m42t9",
+          "editable": true
+        }
+      ],
+      "constraints": [
+        {
+          "search": "`aws-accesslog-sourcetype(\"s3\")`",
+          "owner": "S3_Access_Log"
+        }
+      ],
+      "lineage": "S3_Access_Log"
+    }
+  ],
+  "objectNameList": [
+    "S3_Access_Log"
+  ]
+}

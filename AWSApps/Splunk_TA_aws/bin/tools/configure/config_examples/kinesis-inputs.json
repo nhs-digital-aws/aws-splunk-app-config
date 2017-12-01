@@ -1,0 +1,18 @@
+[
+    {
+        "stanzas": [
+            {
+                "name": "kinesis-01",
+                "account": "aws-account-0",
+                "aws_iam_role": "aws-iam-role-0",
+                "region": "us-east-1",
+                "stream_names": "Test-Stream",
+                "init_stream_position": "TRIM_HORIZON",
+                "encoding": "",
+                "format": "",
+                "sourcetype": "aws:kinesis",
+                "index": "default"
+            }
+        ]
+    }
+]

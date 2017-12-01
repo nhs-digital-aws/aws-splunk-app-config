@@ -1,0 +1,3 @@
+{"metric_dimensions": "Currency=\"USD\"", "SampleCount": "1.0", "Average": "", "period": "60", "Maximum": "48.25", "Minimum": "", "metric_name": "EstimatedCharges", "Unit": "None", "account_id": "000000000000"}
+{"metric_dimensions": "Currency=\"USD\",ServiceName=\"AmazonEC2\"", "SampleCount": "1.0", "Average": "", "period": "3600", "Maximum": "88.99", "Minimum": "", "metric_name": "EstimatedCharges", "Unit": "None", "account_id": "000000000000"}
+{"metric_dimensions": "Currency=\"USD\"", "SampleCount": "1.0", "Average": "", "period": "60", "Maximum": "92.37", "Minimum": "", "metric_name": "EstimatedCharges", "Unit": "None", "account_id": "000000000000"}

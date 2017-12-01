@@ -1,0 +1,13 @@
+port,risk
+20,high
+21,high
+1433,high
+3306,high
+3389,high
+4333,high
+5432,high
+5500,high
+80,low
+25,low
+443,low
+465,low

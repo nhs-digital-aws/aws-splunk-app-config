@@ -1,0 +1,495 @@
+<form script="base_page.js">
+    <label>CloudFront - Traffic Analysis</label>
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="domain_names" searchWhenChanged="true">
+            <label>CloudFront Edges</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <fieldForLabel>id</fieldForLabel>
+            <fieldForValue>domain_name</fieldForValue>
+            <allowCustomValues>true</allowCustomValues>
+            <search>
+                <query>
+                    <![CDATA[
+                        | aclinputlookup cloudfront_edges
+                        | search $accountId$
+                        | fields id, domain_name
+                    ]]>
+                </query>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </search>
+            <prefix>(</prefix>
+            <suffix>)</suffix>
+            <valuePrefix>CloudFront_Access_Log.cs_host="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+    <row>
+        <panel>
+            <single>
+                <title>Total Requests</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(CloudFront_Access_Log.x_edge_request_id) as count FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$)
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("cloudfront")`&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Error Requests</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(CloudFront_Access_Log.x_edge_request_id) as count FROM datamodel=CloudFront_Access_Log where CloudFront_Access_Log.sc_status>399 AND $domain_names$ AND ($cloudfront_datamodel_restrictions$)
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("cloudfront")` sc_status>399&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">none</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[0]</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Total Request Traffic</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats sum(CloudFront_Access_Log.cs_bytes) as cs_bytes FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$)
+                            | eval cs_bytes = case(cs_bytes>1024*1024*1024, tostring(round(cs_bytes/1024/1024/1024,2))+" GB", cs_bytes>1024*1024, tostring(round(cs_bytes/1024/1024,2))+" MB", cs_bytes>1024, tostring(round(cs_bytes/1024,2))+" KB", true(), tostring(cs_bytes)+" B")
+                            | nadefault cs_bytes
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="field">cs_bytes</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Total Response Traffic</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats sum(CloudFront_Access_Log.sc_bytes) as sc_bytes FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$)
+                            | eval sc_bytes = case(sc_bytes>1024*1024*1024, tostring(round(sc_bytes/1024/1024/1024,2))+" GB", sc_bytes>1024*1024, tostring(round(sc_bytes/1024/1024,2))+" MB", sc_bytes>1024, tostring(round(sc_bytes/1024,2))+" KB", true(), tostring(sc_bytes)+" B")
+                            | nadefault sc_bytes
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="field">sc_bytes</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Cache Hit Ratio</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(CloudFront_Access_Log.x_edge_request_id) as count, latest(CloudFront_Access_Log.x_edge_result_type) as result_type FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$) by CloudFront_Access_Log.x_edge_result_type
+                            | stats sum(eval(count*if(result_type=="Hit" OR result_type=="RefreshHit",1,0))) as hit_count, sum(eval(count*if(result_type=="Hit" OR result_type=="RefreshHit" OR result_type=="Miss" OR result_type=="Error",1,0))) as total_count
+                            | eval percent=tostring(round(hit_count*100/total_count, 2))+" %"
+                            | nadefault percent
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="field">percent</option>
+            </single>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <map>
+                <title>Traffic Size by Location (Bytes)</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats sum(CloudFront_Access_Log.cs_bytes) as cs_bytes, sum(CloudFront_Access_Log.sc_bytes) as sc_bytes FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$) by CloudFront_Access_Log.client_ip, CloudFront_Access_Log.client_ip_lon, CloudFront_Access_Log.client_ip_lat
+                            | iplocation CloudFront_Access_Log.client_ip
+                            | eval traffic=cs_bytes+sc_bytes, location=if(City=="",Country,City+","+Country)
+                            | sort 100 - traffic
+                            | geostats latfield=CloudFront_Access_Log.client_ip_lat longfield=CloudFront_Access_Log.client_ip_lon sum(traffic) by location
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="mapping.choroplethLayer.colorBins">5</option>
+                <option name="mapping.choroplethLayer.colorMode">auto</option>
+                <option name="mapping.choroplethLayer.maximumColor">0xDB5800</option>
+                <option name="mapping.choroplethLayer.minimumColor">0x2F25BA</option>
+                <option name="mapping.choroplethLayer.neutralPoint">0</option>
+                <option name="mapping.choroplethLayer.shapeOpacity">0.75</option>
+                <option name="mapping.choroplethLayer.showBorder">1</option>
+                <option name="mapping.data.maxClusters">100</option>
+                <option name="mapping.drilldown">all</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+                <option name="mapping.map.panning">true</option>
+                <option name="mapping.map.scrollZoom">false</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="mapping.markerLayer.markerMaxSize">50</option>
+                <option name="mapping.markerLayer.markerMinSize">10</option>
+                <option name="mapping.markerLayer.markerOpacity">0.8</option>
+                <option name="mapping.showTiles">1</option>
+                <option name="mapping.tileLayer.maxZoom">7</option>
+                <option name="mapping.tileLayer.minZoom">0</option>
+                <option name="mapping.tileLayer.tileOpacity">1</option>
+                <option name="mapping.type">marker</option>
+                <option name="drilldown">all</option>
+                <option name="mapping.fieldColors">{REJECT:0xd93f3c,ACCEPT:0x65a637}</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="height">300</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+            </map>
+        </panel>
+        <panel>
+            <map>
+                <title>Request Count by Location</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(CloudFront_Access_Log.x_edge_request_id) as count FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$) by CloudFront_Access_Log.client_ip, CloudFront_Access_Log.client_ip_lon, CloudFront_Access_Log.client_ip_lat
+                            | iplocation CloudFront_Access_Log.client_ip
+                            | eval location=if(City=="",Country,City+","+Country)
+                            | sort 100 - count
+                            | geostats latfield=CloudFront_Access_Log.client_ip_lat longfield=CloudFront_Access_Log.client_ip_lon sum(count) by location
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="mapping.choroplethLayer.colorBins">5</option>
+                <option name="mapping.choroplethLayer.colorMode">auto</option>
+                <option name="mapping.choroplethLayer.maximumColor">0xDB5800</option>
+                <option name="mapping.choroplethLayer.minimumColor">0x2F25BA</option>
+                <option name="mapping.choroplethLayer.neutralPoint">0</option>
+                <option name="mapping.choroplethLayer.shapeOpacity">0.75</option>
+                <option name="mapping.choroplethLayer.showBorder">1</option>
+                <option name="mapping.data.maxClusters">100</option>
+                <option name="mapping.drilldown">all</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+                <option name="mapping.map.panning">true</option>
+                <option name="mapping.map.scrollZoom">false</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="mapping.markerLayer.markerMaxSize">50</option>
+                <option name="mapping.markerLayer.markerMinSize">10</option>
+                <option name="mapping.markerLayer.markerOpacity">0.8</option>
+                <option name="mapping.showTiles">1</option>
+                <option name="mapping.tileLayer.maxZoom">7</option>
+                <option name="mapping.tileLayer.minZoom">0</option>
+                <option name="mapping.tileLayer.tileOpacity">1</option>
+                <option name="mapping.type">marker</option>
+                <option name="drilldown">all</option>
+                <option name="mapping.fieldColors">{REJECT:0xd93f3c,ACCEPT:0x65a637}</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="height">300</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+            </map>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <chart>
+                <title>HTTP Status</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(CloudFront_Access_Log.x_edge_request_id) as count FROM datamodel=CloudFront_Access_Log where $domain_names$ AND CloudFront_Access_Log.sc_status!="000" AND ($cloudfront_datamodel_restrictions$) by CloudFront_Access_Log.sc_status
+                            | fields CloudFront_Access_Log.sc_status, count
+                            | rename CloudFront_Access_Log.sc_status AS "HTTP Status"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("cloudfront")` sc_status="$click.value$"&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>User Agents</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | datamodel CloudFront_Access_Log CloudFront_Access_Log search
+                            | search $domain_names$ AND ($cloudfront_datamodel_restrictions$)
+                            | rename CloudFront_Access_Log.http_user_agent as http_user_agent, CloudFront_Access_Log.x_edge_request_id as request_id
+                            | useragent http_user_agent
+                            | stats dc(request_id) as count by ua_family
+                            | rename ua_family as "User Agent"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("cloudfront")` | rename cs_user_agent as http_user_agent | useragent http_user_agent  | search ua_family="$click.value$"&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table>
+                <title>CloudFront Edge Details</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(CloudFront_Access_Log.x_edge_request_id) as count, latest(CloudFront_Access_Log.x_edge_result_type) as result_type, latest(CloudFront_Access_Log.cs_host) as cs_host FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$) by CloudFront_Access_Log.x_edge_result_type CloudFront_Access_Log.cs_host
+                            | stats sum(eval(count*if(result_type=="Hit" OR result_type=="RefreshHit",1,0))) as hit_count, sum(eval(count*if(result_type=="Hit" OR result_type=="RefreshHit" OR result_type=="Miss" OR result_type=="Error",1,0))) as total_count by cs_host
+                            | eval percent=tostring(round(hit_count*100/total_count, 2))+" %"
+                            | join cs_host [search earliest=-1d `aws-description($accountId$, "*", "cloudfront_distributions", "id")` | dedup domain_name | rename domain_name as cs_host]
+                            | table id, cs_host, account_id, hit_count, total_count, percent, status, origin.dns_name
+                            | rename id as ID, cs_host as "Domain Name", account_id as "Account ID", hit_count as "Hit Count", total_count as "Request Count", percent as "Hit Ratio", status as "Status", origin.dns_name as "S3 Origin"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="count">5</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table>
+                <title>Top URLs</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(CloudFront_Access_Log.x_edge_request_id) as count, latest(CloudFront_Access_Log.cs_referer) as referer, latest(CloudFront_Access_Log.cs_host) as host FROM datamodel=CloudFront_Access_Log where $domain_names$ AND CloudFront_Access_Log.cs_referer!="-" AND ($cloudfront_datamodel_restrictions$) by CloudFront_Access_Log.cs_referer CloudFront_Access_Log.cs_host
+                            | sort - count
+                            | table referer, host, count
+                            | rename referer as "Referer Domain Name", host as "Edge Domain Name", count as "Request Count"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="count">5</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+        <panel>
+            <table>
+                <title>Top Request by Edge Location</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(CloudFront_Access_Log.x_edge_request_id) as count FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$) by CloudFront_Access_Log.edge_location_name
+                            | sort - count
+                            | eventstats sum(count) as total
+                            | eval percent=tostring(round(100*count/total, 2))+"%"
+                            | table CloudFront_Access_Log.edge_location_name, count, percent
+                            | rename CloudFront_Access_Log.edge_location_name as "Edge Location", count as "Request Count", percent as "Percentage"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="count">5</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+                <option name="cell.percentage">Percentage</option>
+            </table>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table>
+                <title>Slowest Requests</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats avg(CloudFront_Access_Log.time_taken) as time_taken FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$) by CloudFront_Access_Log.cs_host CloudFront_Access_Log.edge_location_name CloudFront_Access_Log.cs_uri_stem
+                            | sort 100 - time_taken
+                            | eval time_taken = round(time_taken, 2)
+                            | table CloudFront_Access_Log.cs_host, CloudFront_Access_Log.edge_location_name, CloudFront_Access_Log.cs_uri_stem, time_taken
+                            | rename CloudFront_Access_Log.cs_host as "Edge Domain", CloudFront_Access_Log.edge_location_name as "Edge Location", CloudFront_Access_Log.uri_stem as "Request URI", time_taken as "Time (ms)", CloudFront_Access_Log.cs_uri_stem as "Request URI"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="count">5</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+                <option name="dataOverlayMode">heatmap</option>
+            </table>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table>
+                <title>Heaviest Traffic Requests</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats avg(CloudFront_Access_Log.sc_bytes) as sc_bytes, avg(CloudFront_Access_Log.cs_bytes) as cs_bytes FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$) by CloudFront_Access_Log.cs_host CloudFront_Access_Log.edge_location_name CloudFront_Access_Log.cs_uri_stem
+                            | eval total_traffic=sc_bytes+cs_bytes
+                            | sort 100 - total_traffic
+                            | eval total_traffic=case(total_traffic>1024*1024*1024, tostring(round(total_traffic/1024/1024/1024,2))+" GB", total_traffic>1024*1024, tostring(round(total_traffic/1024/1024,2))+" MB", total_traffic>1024, tostring(round(total_traffic/1024,2))+" KB", true(), tostring(round(total_traffic,2))+" B")
+                            | eval cs_traffic=case(cs_bytes>1024*1024*1024, tostring(round(cs_bytes/1024/1024/1024,2))+" GB", cs_bytes>1024*1024, tostring(round(cs_bytes/1024/1024,2))+" MB", cs_bytes>1024, tostring(round(cs_bytes/1024,2))+" KB", true(), tostring(round(cs_bytes,2))+" B")
+                            | eval sc_traffic=case(sc_bytes>1024*1024*1024, tostring(round(sc_bytes/1024/1024/1024,2))+" GB", sc_bytes>1024*1024, tostring(round(sc_bytes/1024/1024,2))+" MB", sc_bytes>1024, tostring(round(sc_bytes/1024,2))+" KB", true(), tostring(round(sc_bytes,2))+" B")
+                            | table CloudFront_Access_Log.cs_host, CloudFront_Access_Log.edge_location_name, CloudFront_Access_Log.cs_uri_stem, cs_traffic, sc_traffic, total_traffic
+                            | rename CloudFront_Access_Log.cs_host as "Edge Domain", CloudFront_Access_Log.edge_location_name as "Edge Location", CloudFront_Access_Log.uri_stem as "Request URI", cs_traffic as "Request Traffic", sc_traffic as "Response Traffic", total_traffic as "Total Traffic"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="count">5</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <chart>
+                <title>Latency Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats sum(CloudFront_Access_Log.time_taken) as time_taken FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$) by CloudFront_Access_Log.cs_host _time span=1h
+                            | timechart sum(time_taken) by CloudFront_Access_Log.cs_host
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Latency(ms)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Traffic (MB) Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats sum(CloudFront_Access_Log.cs_bytes) as cs_bytes, sum(CloudFront_Access_Log.sc_bytes) as sc_bytes FROM datamodel=CloudFront_Access_Log where $domain_names$ AND ($cloudfront_datamodel_restrictions$) by CloudFront_Access_Log.cs_host _time span=1h
+                            | eval total_traffic=sc_bytes+cs_bytes
+                            | timechart sum(eval(round(total_traffic/1024/1024,2))) by CloudFront_Access_Log.cs_host
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">collapsed</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+</form>

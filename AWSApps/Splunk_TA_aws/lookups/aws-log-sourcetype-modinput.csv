@@ -1,0 +1,6 @@
+sourcetype,modinput
+aws:s3:log,Generic S3
+aws:logs:log,Incremental S3
+aws:sqsbaseds3:log,SQS-Based S3
+aws:description:log,Description
+aws:cloudwatch:log,Cloudwatch

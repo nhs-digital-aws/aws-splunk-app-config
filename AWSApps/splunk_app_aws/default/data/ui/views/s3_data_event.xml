@@ -1,0 +1,248 @@
+<form script="base_page.js">
+    <label>S3 - Data Event</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+
+    <search id="baseCloudTrailS3Search">
+        <query>
+            | savedsearch "CloudTrail S3 Data Event Search"
+            | search $accountId$ $region$
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <single>
+            <title>Error Events</title>
+            <search base="baseCloudTrailS3Search">
+                <query>
+                    | stats sum(count) as count sum(error) as errors
+                    | nadefault errors count
+                    | eval _total_name="Data Events", _total_field=count
+                </query>
+            </search>
+            <option name="field">errors</option>
+        </single>
+
+        <single>
+            <title>Unauthorized Events</title>
+            <search base="baseCloudTrailS3Search">
+                <query>
+                    stats sum(count) as count sum(Unauthorized) as Unauthorized
+                    | nadefault Unauthorized count
+                    | eval _total_name="Data Events", _total_field=count
+                </query>
+            </search>
+            <option name="field">Unauthorized</option>
+        </single>
+
+        <table>
+            <title>Activities by User</title>
+            <search base="baseCloudTrailS3Search">
+                <query>
+                    <![CDATA[
+                        stats sum(Unauthorized) as Unauthorized sum(error) as Errors by userName
+                        | sort - Errors Username
+                        | rename userName as Username
+                    ]]>
+                </query>
+            </search>
+            <option name="count">10</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">true</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+        </table>
+    </row>
+
+    <row>
+        <chart>
+            <title>Events by UserAgent</title>
+            <search base="baseCloudTrailS3Search">
+                <query>
+                    <![CDATA[
+                        stats sum(count) as Count by userAgent
+                    ]]>
+                </query>
+            </search>
+            <option name="charting.chart">pie</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=| savedsearch "CloudTrail S3 Data Event Search" | search $accountId$ $region$
+                        userAgent=$click.value$&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </chart>
+
+        <chart>
+            <title>Events by UserName</title>
+            <search base="baseCloudTrailS3Search">
+                <query>
+                    <![CDATA[
+                        stats sum(count) as Count by userName
+                    ]]>
+                </query>
+            </search>
+            <option name="charting.chart">pie</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=| savedsearch "CloudTrail S3 Data Event Search" | search $accountId$ $region$
+                        userName=$click.value$&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </chart>
+
+        <chart>
+            <title>Events by BucketName</title>
+            <search base="baseCloudTrailS3Search">
+                <query>
+                    <![CDATA[
+                        stats sum(count) as Count by bucketName
+                    ]]>
+                </query>
+            </search>
+            <option name="charting.chart">pie</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=| savedsearch "CloudTrail S3 Data Event Search" | search $accountId$ $region$
+                        bucketName=$click.value$&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </chart>
+    </row>
+
+    <row>
+        <chart>
+            <title>Events Over Time</title>
+            <search base="baseCloudTrailS3Search">
+                <query>
+                    | timechart sum(count) by eventName
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <option name="charting.chart">column</option>
+            <option name="charting.chart.stackMode">stacked</option>
+            <option name="charting.legend.placement">right</option>
+            <option name="charting.legend.masterLegend">null</option>
+            <option name="charting.axisTitleX.text">Time</option>
+            <option name="charting.axisTitleY.text">S3 Data Events</option>
+        </chart>
+    </row>
+
+    <row>
+        <panel>
+            <map>
+                <title>Events by Origin</title>
+                <search base="baseCloudTrailS3Search">
+                    <query>
+                        <![CDATA[
+                            | iplocation sourceIPAddress
+                            | geostats latfield=lat longfield=lon count by eventName
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="height">300</option>
+            </map>
+        </panel>
+    </row>
+
+    <row>
+        <table>
+            <title>Most Frequently Accessed Objects - Top 10</title>
+            <search base="baseCloudTrailS3Search">
+                <query>
+                    <![CDATA[
+                        stats sum(count) as "Total Accesses" by objectName bucketName
+                        | rename objectName as ObjectName, bucketName as BucketName
+                        | sort - "Total Accesses" ObjectName limit=10
+                        | table BucketName, ObjectName, "Total Accesses"
+                    ]]>
+                </query>
+            </search>
+            <option name="count">8</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">true</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">ObjectName</option>
+            <option name="cell.cellRange">true</option>
+            <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=| savedsearch "CloudTrail S3 Data Event Search" | search $accountId$ $region$
+                            objectName="$row.ObjectName$"&$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+        </table>
+
+        <table>
+            <title>Most Recent Modifications - Latest 10</title>
+            <search base="baseCloudTrailS3Search">
+                <query>
+                    <![CDATA[
+                        | search readOnly=false (eventName="DeleteObject" OR eventName="PutObject" OR eventName="PostObject")
+                        | sort - _time limit=10
+                        | eval _time=strftime(_time, "%m/%d/%Y %H:%M:%S")
+                        | table bucketName, objectName, userName, eventName, sourceIPAddress, userAgent, _time
+                        | rename bucketName as BucketName, objectName as ObjectName, userName as UserName, eventName as EventName,
+                        sourceIPAddress as "Source IP Address", userAgent as UserAgent, _time as Time
+                    ]]>
+                </query>
+            </search>
+            <option name="count">8</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="wrap">true</option>
+            <option name="drilldown">row</option>
+            <option name="rowNumbers">true</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">EventName</option>
+            <option name="cell.cellRange">true</option>
+        </table>
+    </row>
+
+</form>

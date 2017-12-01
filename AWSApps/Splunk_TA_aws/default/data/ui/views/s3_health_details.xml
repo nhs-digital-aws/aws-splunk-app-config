@@ -1,0 +1,275 @@
+<form script="MultiSelectHelper.js">
+    <label>S3 Inputs Health Details</label>
+    <fieldset submitButton="false">
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </default>
+        </input>
+
+        <input type="multiselect" token="host" searchWhenChanged="true">
+            <label>Host</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="host" fieldForLabel="host">
+                <![CDATA[ index=_internal sourcetype=aws:*:log | stats count by host|table host ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>host="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+            <default>All</default>
+        </input>
+
+        <input type="multiselect" token="datainput" searchWhenChanged="true" dependsOn="modinput">
+            <label>Input Name</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="datainput" fieldForLabel="datainput_prefix">
+                <![CDATA[
+                index=_internal (sourcetype=aws:s3:log OR sourcetype=aws:logs:log OR sourcetype=aws:sqsbaseds3:log)
+                | stats count by datainput
+                | table datainput
+                | rex field=datainput "((?P<datainput_prefix>.*?)_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$)"
+                | fillnull value="" datainput_prefix
+                | eval datainput=if(datainput_prefix!="", datainput_prefix+"_*", datainput)
+                | dedup datainput
+                | table datainput, datainput_prefix
+                | sort datainput
+                ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>datainput="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+            <default>All</default>
+        </input>
+
+        <input type="text" token="key_word" searchWhenChanged="true">
+            <label>Keyword</label>
+            <prefix> "</prefix>
+            <suffix>"</suffix>
+            <default></default>
+        </input>
+
+    </fieldset>
+
+    <row>
+        <panel>
+            <chart>
+                <title>SQS-Based S3 Time Lapse between Log Creation and Indexing</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            index="_internal" $datainput$ $host$ $key_word$
+                            sourcetype="aws:sqsbaseds3:log" (message="Sent data for indexing.")
+                            | eval delay=_time-strptime(last_modified, "%Y-%m-%dT%H:%M:%S%Z")
+                            | eval delay = if (delay<0,0,delay)
+                            | timechart eval(round(mean(delay),3)) by datainput
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Delay (s)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <table>
+                <title>SQS-Based S3 Error Message Details</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            index="_internal" $datainput$ $host$ $key_word$
+                            sourcetype="aws:sqsbaseds3:log" level = ERROR
+                            | fillnull value="" ErrorCode, ErrorDetail
+                            | eval ErrorDetail = if((ErrorDetail == "" or ErrorDetail == "''") and !isnull(message), message, ErrorDetail)
+                            | lookup aws_health_error_type_lookup ErrorCode, ErrorDetail, sourcetype OUTPUT ErrorType
+                            | lookup aws_log_sourcetype_modinput_lookup sourcetype OUTPUT modinput
+                            | eval start_time=strftime(start_time, "%m/%d/%y %H:%M:%S")
+                            | table host, modinput, datainput, start_time, ErrorType, ErrorDetail
+                            | sort host, modinput, datainput, start_time, ErrorCode
+                            | rename host as Host, modinput as "Input Type", datainput as "Data Input", ErrorType as "Error Type" start_time as "Start Time", ErrorDetail as "Error Detail"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+            </table>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Incremental S3 Time Lapse between Log Creation and Indexing</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            index="_internal" $datainput$ $host$ $key_word$
+                            sourcetype="aws:logs:log" (message="Sent data for indexing.")
+                            | eval delay=_time-strptime(last_modified, "%Y-%m-%dT%H:%M:%S%Z")
+                            | eval delay = if (delay<0,0,delay)
+                            | timechart eval(round(mean(delay),3)) by datainput
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Delay (s)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <table>
+                <title>Incremental S3 Error Message Details</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            index="_internal" $datainput$ $host$ $key_word$
+                            sourcetype="aws:logs:log" level = ERROR
+                            | fillnull value="" ErrorCode, ErrorDetail
+                            | lookup aws_health_error_type_lookup ErrorCode, ErrorDetail, sourcetype OUTPUT ErrorType
+                            | lookup aws_log_sourcetype_modinput_lookup sourcetype OUTPUT modinput
+                            | eval start_time=strftime(start_time, "%m/%d/%y %H:%M:%S")
+                            | eval ErrorDetail = if((ErrorDetail == "" or ErrorDetail == "''") and !isnull(message), message, ErrorDetail)
+                            | table host, modinput, datainput, start_time, ErrorType, ErrorDetail
+                            | sort host, modinput, datainput, start_time, ErrorCode
+                            | rename host as Host, modinput as "Input Type", datainput as "Data Input", ErrorType as "Error Type", start_time as "Start Time", ErrorDetail as "Error Detail"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+            </table>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Generic S3 Time Lapse between Log Creation and Indexing</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            index="_internal" $datainput$ $host$ $key_word$
+                            sourcetype="aws:s3:log" action=index
+                            | eval delay=_time-strptime(last_modified, "%Y-%m-%dT%H:%M:%S.000%Z")
+                            | eval delay = if (delay<0,0,delay)
+                            | timechart eval(round(mean(delay),3)) by datainput
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Delay (s)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <table>
+                <title>Generic S3 Error Message Details</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            index="_internal" $datainput$ $host$ $key_word$
+                            sourcetype="aws:s3:log" level = ERROR
+                            | fillnull value="" ErrorCode, ErrorDetail
+                            | lookup aws_health_error_type_lookup ErrorCode, ErrorDetail, sourcetype OUTPUT ErrorType
+                            | lookup aws_log_sourcetype_modinput_lookup sourcetype OUTPUT modinput
+                            | eval start_time=strftime(start_time, "%m/%d/%y %H:%M:%S")
+                            | eval ErrorDetail = if((ErrorDetail == "" or ErrorDetail == "''") and !isnull(message), message, ErrorDetail)
+                            | table host, modinput, datainput, start_time, ErrorType, ErrorDetail
+                            | sort host, modinput, datainput, start_time, ErrorCode
+                            | rename host as Host, modinput as "Input Type", datainput as "Data Input", ErrorType as "Error Type" start_time as "Start Time", ErrorDetail as "Error Detail"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+            </table>
+        </panel>
+    </row>
+
+</form>

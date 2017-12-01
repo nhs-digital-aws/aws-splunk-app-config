@@ -1,0 +1,177 @@
+<form script="ri_inventory.js">
+    <label>Reserved Instance Inventory</label>
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="True">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <fieldForValue>account_id</fieldForValue>
+            <fieldForLabel>title</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+                </query>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <fieldForValue>region</fieldForValue>
+            <fieldForLabel>label</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[ |inputlookup regions ]]>
+                </query>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="state" searchWhenChanged="true">
+            <label>State</label>
+            <default>active</default>
+            <choice value="active">Active</choice>
+            <choice value="retired">Retired</choice>
+        </input>
+        <input type="multiselect" token="instance_type" searchWhenChanged="true">
+            <label>Instance Type</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <fieldForValue>instance_type</fieldForValue>
+            <fieldForLabel>instance_type</fieldForLabel>
+            <search base="base">
+                <query>
+                     search state=$state$
+                    | stats count by instance_type
+                </query>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>instance_type="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="duration" searchWhenChanged="true">
+            <label>Term</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <fieldForValue>duration</fieldForValue>
+            <fieldForLabel>label</fieldForLabel>
+            <search base="base">
+                <query>
+                     search state=$state$ $instance_type$
+                    | stats count by duration
+                    | eval label=round(duration/60/60/24)." days"
+                </query>
+            </search>
+        </input>
+    </fieldset>
+
+    <search id="base">
+        <query>
+            `aws-description-resource($accountId$, $region$, "ec2_reserved_instances")`
+             | stats sum(instance_count) as instance_count by aws_account_id id Scope region availability_zone description instance_tenancy instance_type offering_type fixed_price duration end state
+        </query>
+        <earliest>-d</earliest>
+        <latest>now</latest>
+    </search>
+    <search id="baseRI" base="base">
+        <query>
+             search state=$state$ duration=$duration$ $instance_type$
+             | stats sum(instance_count) as instance_count by aws_account_id id Scope region availability_zone description instance_tenancy instance_type offering_type fixed_price duration end state
+        </query>
+    </search>
+
+    <row>
+        <panel>
+            <chart>
+                <title>RIs by Instance Type</title>
+                <search base="baseRI">
+                    <query>stats sum(instance_count) as count by instance_type</query>
+                </search>
+                <option name="charting.chart">pie</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>RIs by Region</title>
+                <search base="baseRI">
+                    <query>stats sum(instance_count) as count by region</query>
+                </search>
+                <option name="charting.chart">pie</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>RIs by Payment Option</title>
+                <search base="baseRI">
+                    <query>stats sum(instance_count) as count by offering_type</query>
+                </search>
+                <option name="charting.chart">pie</option>
+            </chart>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table id="RI_Plans">
+                <title>RI Plans</title>
+                <search base="baseRI">
+                    <query>
+                         eval location = if(availability_zone="null", region, availability_zone), duration=round(duration/60/60/24)." days"
+                        | table aws_account_id id Scope location description instance_tenancy instance_type offering_type instance_count fixed_price duration end
+                        | sort 0 end
+                        | rename aws_account_id as "Account ID", id as "RI ID", instance_type as "Instance Type", instance_tenancy as "Tenancy", instance_count as "Count", description as "Platform", location as "Location", fixed_price as "Fixed Price", duration as "Term", end as "Expire", offering_type as "Payement Option"
+                    </query>
+                </search>
+                <option name="drilldown">row</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="count">10</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-description-sourcetype` id="$row.RI ID$" | head 1
+                        ]]>
+                    </link>
+                </drilldown>
+            </table>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table id="RI_Utilization">
+                <title>RI Utilization by Family in Last Month</title>
+                <search base="baseRI">
+                    <query>
+                         `aws-ri-info`
+                        | eval run_instance_info=""
+                        | join type=left aws_account_id, region, platform, tenancy, family
+                        [| tstats summariesonly=t count FROM datamodel=Instance_Hour
+                            where earliest=-mon@mon-d latest=@mon+d $monthSpl$ by instance_hour.LinkedAccountId, instance_hour.AvailabilityZone, instance_hour.instance_type,instance_hour.platform, instance_hour.tenancy _time span=1h
+                        | rename instance_hour.LinkedAccountId as aws_account_id, instance_hour.AvailabilityZone as availability_zone, instance_hour.instance_type as instance_type,instance_hour.platform as platform, instance_hour.tenancy as tenancy
+                        | eval availability_zone_len=len(availability_zone), region=substr(availability_zone, 0, availability_zone_len-1)
+                        | search $accountId$ $region$ $instance_type$
+                        | lookup ri_billing_to_description billing as tenancy OUTPUT description as tenancy
+                        | lookup ri_billing_to_description billing as platform OUTPUT description as platform
+                        | `aws-ec2-info`
+                        | stats values(run_instance_info) as run_instance_info by aws_account_id, region, platform, tenancy, family]
+                        | join type=left aws_account_id
+                        [ | tstats summariesonly=t count as is_billing_configured FROM datamodel=Instance_Hour where earliest=-mon@mon latest=@mon by instance_hour.LinkedAccountId | rename instance_hour.LinkedAccountId as aws_account_id]
+                        | eval total_hours=(relative_time(now(), "@mon") - relative_time(now(),"-mon@mon"))/3600, run_instance_info=if(isnull(is_billing_configured), "N/A", run_instance_info)
+                        | calculateri
+                        | table aws_account_id, region, platform, tenancy, family, RI_hours_purchased, RI_hours_used
+                        | eval utilization = if(RI_hours_used = "N/A", "N/A", round(RI_hours_used/ RI_hours_purchased*100, 2))
+                        | sort 0 utilization
+                        | eval utilization= if(utilization = "N/A", "N/A", utilization."%")
+                        | rename aws_account_id as "Account ID", region as "Region", platform as "Platform", tenancy as "Tenancy", family as "Family", RI_hours_purchased as "RI Hours Purchased", RI_hours_used as "RI Hours Used", utilization as "RI Utilization"
+                    </query>
+                </search>
+            </table>
+        </panel>
+    </row>
+</form>

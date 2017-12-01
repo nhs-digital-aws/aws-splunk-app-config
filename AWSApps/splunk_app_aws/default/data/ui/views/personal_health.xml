@@ -1,0 +1,64 @@
+<form script="silvermine_insights.js">
+    <label>AWS Personal Health</label>
+
+    <fieldset submitButton="false" autoRun="true">
+        <html>
+            <div id="service-type-input"></div>
+        </html>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <allowCustomValues>true</allowCustomValues>
+            <search>
+                <query>
+                    <![CDATA[ |inputlookup regions ]]>
+                </query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+            <fieldForValue>region</fieldForValue>
+            <fieldForLabel>label</fieldForLabel>
+            <prefix>(BodyJson.region="global" OR </prefix>
+            <valuePrefix>BodyJson.region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+            <suffix>)</suffix>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>
+                <earliest>-1mon</earliest>
+                <latest>now</latest>
+            </default>
+        </input>
+    </fieldset>
+
+    <search id="silvermineSearch">
+        <query>
+            <![CDATA[
+               `aws-sqs-sourcetype` AND BodyJson.source="aws.health" AND $region$
+               | rex field=BodyJson.time "(?<date>.*?)T(?<time>.*?)Z"
+               | nomv BodyJson.resources{}
+               | nomv BodyJson.detail.eventDescription{}.latestDescription
+               | rename BodyJson.resources{} as resources, BodyJson.detail.service as service, BodyJson.detail.eventDescription{}.latestDescription as details, BodyJson.detail.eventTypeCode as eventTypeCode, BodyJson.detail.eventTypeCategory as eventTypeCategory, BodyJson.detail.startTime as startTime, BodyJson.detail.endTime as endTime, BodyJson.region as region
+               | dedup service, date sortby - time
+               | eval startTime=replace(startTime, "[TZ]", " "), endTime=replace(endTime, "[TZ]", " ")
+               | table service, date, time, region, eventTypeCode, eventTypeCategory, details, startTime, endTime, resources
+               | sort limit=0 service, date
+            ]]>
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <panel>
+            <html>
+                <div id="silvermine-container">
+                </div>
+            </html>
+        </panel>
+    </row>
+
+</form>

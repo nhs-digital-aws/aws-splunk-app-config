@@ -1,0 +1,143 @@
+<form script="anomaly_overview.js">
+    <label>Anomaly Detection Overview</label>
+    <fieldset submitButton="false">
+        <input type="multiselect" token="name" searchWhenChanged="true">
+            <label>Name</label>
+            <choice value="*">All</choice>
+            <default>All</default>
+            <fieldForLabel>job_name</fieldForLabel>
+            <fieldForValue>job_name</fieldForValue>
+            <search base="jobSearch">
+                <query>
+                    <![CDATA[
+                        search job_name!=""
+                        | fields job_name
+                    ]]>
+                </query>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>job_name="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="priority" searchWhenChanged="true">
+            <label>Priority</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <choice value="1">Low</choice>
+            <choice value="2">Medium</choice>
+            <choice value="3">High</choice>
+            <choice value="4">Critical</choice>
+        </input>
+        <input type="dropdown" token="schedule" searchWhenChanged="true">
+            <label>Schedule type</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <choice value="Hourly">Hourly</choice>
+            <choice value="Daily">Daily</choice>
+            <choice value="Weekly">Weekly</choice>
+            <choice value="Monthly">Monthly</choice>
+        </input>
+        <input id="tags" type="text" token="tags" searchWhenChanged="true">
+            <label>Tags (match all)</label>
+            <default></default>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+    <row>
+        <panel>
+            <title>Anomaly Trends</title>
+            <chart>
+                <search base="anomalySearch">
+                    <query>
+                        <![CDATA[
+                             search job_priority=$priority$ job_schedule=$schedule$ $name$ $tags|tag2spl$
+                            | timechart span=1d sum(total) as count by job_name
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.legend.placement">none</option>
+                <option name="charting.legend.masterLegend">null</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisTitleY.text">Count</option>
+                <option name="charting.legend.placement">right</option>
+                <option name="charting.drilldown">none</option>
+            </chart>
+        </panel>
+    </row>
+    <search id="jobSearch">
+        <query>
+            <![CDATA[
+                | `aws-anomaly-config`
+                | fields job_alert_id, job_description, job_mode, job_name, job_priority,
+                job_schedule, job_search, job_tags, job_train, job_id
+            ]]>
+        </query>
+    </search>
+    <search id="jobTableSearch" base="jobSearch">
+        <query>
+            <![CDATA[
+                 search job_priority=$priority$ job_schedule=$schedule$ $name$ $tags|tag2spl$
+                | join type=left job_id
+                [search `aws-anomaly-data` | dedup job_id | eval lasttime=_time | fields lasttime, job_id]
+                | eval Action = job_id,
+                Priority=case(job_priority==1, "Low", job_priority==2, "Medium", job_priority==3, "High", job_priority==4, "Critical"),
+                lasttime = strftime(lasttime, "%Y-%m-%d %H:%M:%S")
+                | search job_id!=""
+                | rename job_name as Name, job_schedule as "Schedule type", job_tags as Tags, lasttime as "Last anomaly time"
+                | table Name, Priority, "Schedule type", Tags, "Last anomaly time", Action
+            ]]>
+        </query>
+    </search>
+    <search id="anomalySearch">
+        <query>
+            <![CDATA[
+                `aws-anomaly-data`
+                | join type=left job_id
+                [| `aws-anomaly-config` | fields job_id, job_name, job_priority, job_schedule, job_tags]
+            ]]>
+        </query>
+    </search>
+    <search id="scheduleCheckerSearch">
+        <query>
+            <![CDATA[
+                | inputlookup anomaly_schedule_checker | fillnull | eval run_time=_time
+            ]]>
+        </query>
+    </search>
+    <row>
+        <panel>
+            <title>Latest 100 Anomalies</title>
+            <table id="lastAnomaliesTable">
+                <search base="anomalySearch">
+                    <query>
+                        <![CDATA[
+                            search job_priority=$priority$ job_schedule=$schedule$ $name$ $tags|tag2spl$
+                            | head 100
+                            | anomalytable
+                            | rename job_name as "Job name"
+                            | table _time, "Job name", "Field name", "Value", "Severity"
+                        ]]>
+                    </query>
+                </search>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <title>Anomaly Detection Jobs</title>
+            <html>
+                <div id="jobTable"></div>
+            </html>
+        </panel>
+    </row>
+</form>

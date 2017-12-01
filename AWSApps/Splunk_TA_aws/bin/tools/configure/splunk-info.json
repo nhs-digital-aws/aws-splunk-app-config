@@ -1,0 +1,14 @@
+[
+  {
+    "hostname": "hfw-01",
+    "mgmt_uri": "https://ghost:8089",
+    "username": "admin",
+    "password": "admin"
+  },
+  {
+    "hostname": "hfw-02",
+    "mgmt_uri": "https://ghost:8089",
+    "username": "admin",
+    "password": "admin"
+  }
+]

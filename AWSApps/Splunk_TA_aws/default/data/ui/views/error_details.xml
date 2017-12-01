@@ -1,0 +1,109 @@
+<form script="MultiSelectHelper.js">
+    <label>Error Details</label>
+    <fieldset submitButton="false">
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </default>
+        </input>
+
+        <input type="multiselect" token="host" searchWhenChanged="true">
+            <label>Host</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="host" fieldForLabel="host">
+                <![CDATA[ index=_internal sourcetype=aws:*:log | stats count by host|table host ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>host="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+            <default>All</default>
+        </input>
+
+        <input type="multiselect" token="modinput" searchWhenChanged="true">
+            <label>Input Type</label>
+            <choice value="sourcetype=aws:s3:log OR sourcetype=aws:logs:log OR sourcetype=aws:sqsbaseds3:log OR sourcetype=aws:description:log OR sourcetype=aws:cloudwatch:log">All</choice>
+            <choice value="sourcetype=aws:s3:log">Generic S3</choice>
+            <choice value="sourcetype=aws:logs:log">Incremental S3</choice>
+            <choice value="sourcetype=aws:sqsbaseds3:log">SQS-Based S3</choice>
+            <choice value="sourcetype=aws:description:log">Description</choice>
+            <choice value="sourcetype=aws:cloudwatch:log">Cloudwatch</choice>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <delimiter> OR </delimiter>
+            <default>All</default>
+        </input>
+
+        <input type="multiselect" token="datainput" searchWhenChanged="true" dependsOn="modinput">
+            <label>Input Name</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="datainput" fieldForLabel="datainput_prefix">
+                <![CDATA[
+                index=_internal $modinput$
+                | stats count by datainput
+                | table datainput
+                | rex field=datainput "((?P<datainput_prefix>.*?)_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$)"
+                | fillnull value="" datainput_prefix
+                | eval datainput=if(datainput_prefix!="", datainput_prefix+"_*", datainput)
+                | dedup datainput
+                | table datainput, datainput_prefix
+                | sort datainput
+                ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>datainput="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+            <default>All</default>
+        </input>
+
+        <input type="multiselect" token="errortype" searchWhenChanged="true">
+            <label>Error Type</label>
+            <choice value="*">All</choice>
+            <choice value="uncategorized">uncategorized</choice>
+            <populatingSearch fieldForValue="ErrorType" fieldForLabel="ErrorType">
+                <![CDATA[|inputlookup aws-health-error-type.csv|stats count by ErrorType|table ErrorType ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>ErrorType="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+            <default>All</default>
+        </input>
+
+    </fieldset>
+
+    <row>
+        <panel>
+            <table>
+                <title>Error Message Details</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            index="_internal" $modinput$ $datainput$ $host$ level = ERROR
+                            | fillnull value="" ErrorCode, ErrorDetail
+                            | eval ErrorDetail = if((ErrorDetail == "" or ErrorDetail == "''") and !isnull(message), message, ErrorDetail)
+                            | lookup aws_health_error_type_lookup ErrorCode, ErrorDetail, sourcetype OUTPUT ErrorType
+                            | lookup aws_log_sourcetype_modinput_lookup sourcetype OUTPUT modinput
+                            | search $errortype$
+                            | eval ErrorDetail = if(ErrorDetail == message, ErrorDetail, message.":".ErrorDetail)
+                            | table host, modinput, datainput, start_time, ErrorType, ErrorDetail
+                            | sort host, modinput, datainput, start_time, ErrorCode
+                            | eval start_time=strftime(start_time, "%m/%d/%y %H:%M:%S")
+                            | rename host as Host, modinput as "Input Type", datainput as "Data Input", start_time as "Start Time",
+                              ErrorDetail as "Error Detail", ErrorType as "Error Type"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+            </table>
+        </panel>
+    </row>
+
+</form>

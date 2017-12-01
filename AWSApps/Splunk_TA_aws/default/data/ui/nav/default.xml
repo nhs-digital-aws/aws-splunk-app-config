@@ -1,0 +1,11 @@
+<nav search_view="search" color="#65A637">
+
+<view name="inputs" default="true" label="Inputs" />
+<view name="configuration" default="false" label="Configuration" />
+<view name="search" default="false" label="Search" />
+<collection label="Health Check">
+    <view name="health_overview" />
+    <view name="s3_health_details" />
+</collection>
+
+</nav>

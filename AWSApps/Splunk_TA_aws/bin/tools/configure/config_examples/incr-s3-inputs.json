@@ -1,0 +1,33 @@
+[
+    {
+        "stanzas": [
+            {
+                "name": "s3-incr-01",
+                "aws_account": "aws-account-0",
+                "aws_iam_role": "aws-iam-role-0",
+                "host_name": "s3.amazonaws.com",
+                "bucket_name": "s3accesslogs-bucket",
+                "log_type": "cloudtrail",
+                "log_file_prefix": "AWSLogs/",
+                "log_start_date": "2010-01-01",
+                "interval": "1800",
+                "sourcetype": "aws:s3:accesslogs",
+                "index": "default"
+            },
+            {
+                "name": "s3-incr-02",
+                "aws_account": "aws-account-0",
+                "aws_iam_role": "aws-iam-role-0",
+                "host_name": "s3.amazonaws.com",
+                "bucket_name": "s3accesslogs-bucket",
+                "log_type": "cloudfront:accesslogs",
+                "log_file_prefix": "logs/",
+                "log_start_date": "2010-01-01",
+                "log_name_format": "1234567890",
+                "interval": "1800",
+                "sourcetype": "aws:cloudfront:accesslogs",
+                "index": "default"
+            }
+        ]
+    }
+]

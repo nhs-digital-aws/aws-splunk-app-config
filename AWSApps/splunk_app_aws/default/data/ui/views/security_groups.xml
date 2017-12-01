@@ -1,0 +1,291 @@
+<form script="base_page.js">
+    <label>Security Groups</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="notable" searchWhenChanged="true">
+            <label>Notable</label>
+            <default>1</default>
+            <choice value="0">False</choice>
+            <choice value="1">True</choice>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+
+    <search id="baseCloudTrailSearch">
+        <query>
+            | savedsearch "CloudTrail Base Search"
+            | search $accountId$ $region$
+            | `cloudtrail_service("Security Groups", $notable$)`
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <single>
+            <title>Security Groups</title>
+            <search>
+                <query>
+                    `aws-description-resource($accountId$, $region$, "ec2_security_groups")`
+                    | stats count
+                    | nadefault count
+                </query>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </search>
+            <drilldown>
+                <link target="_blank">
+                   <![CDATA[
+                        search?q=search `aws-description-resource($accountId$, $region$, "ec2_security_groups")`
+                        |table id,region,tags.Name,name,configuration.vpcId&$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+            <option name="field">count</option>
+        </single>
+        <single>
+            <title>Security Group Rules</title>
+            <search>
+                <query>
+                   `aws-description-resource($accountId$, $region$, "ec2_security_groups")`
+                    | spath path=rules{} output=ingress
+                    | spath path=rules_egress{} output=egress
+                    | stats count(ingress) as ingress, count(egress) as egress
+                    | eval count=ingress+egress
+                    | nadefault count
+                </query>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </search>
+            <drilldown>
+                <link target="_blank">
+                   <![CDATA[
+                        search?q=search `aws-description-resource($accountId$, $region$, "ec2_security_groups")`
+                        | spath path=rules{} output=ingress
+                        | spath path=rules_egress{} output=egress
+                        | table id,region,tags.Name,name,vpc_id,ingress,egress&$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+            <option name="field">count</option>
+        </single>
+        <single>
+            <title>Error Events</title>
+            <search base="baseCloudTrailSearch">
+                <query>
+                    stats sum(count) as count sum(errors) as errors
+                    | nadefault errors count
+                    | eval _total_name="events", _total_field=count
+                </query>
+            </search>
+            <option name="field">errors</option>
+        </single>
+    </row>
+
+    <row>
+        <chart>
+            <title>Security Group Actions</title>
+            <search base="baseCloudTrailSearch">
+                <query>
+                    <![CDATA[
+                        stats sum(count) as count by eventName
+                        | sort - Errors
+                    ]]>
+                </query>
+            </search>
+            <option name="charting.chart">pie</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` | `cloudtrail_service("Security Groups", $notable$)` eventName=$click.value$&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </chart>
+        <table>
+            <title>Unused Security Groups</title>
+            <search>
+                <query>
+                    <![CDATA[
+                        `aws-config-resources($accountId$, $region$, "AWS::EC2::SecurityGroup")`
+                        | spath  output=rela path=relationships{}
+                        | rex field=rela "\"resourceId\": \"(?<instanceId>i-.*)\""
+                        | rex field=rela "\"resourceId\": \"(?<networkId>eni-.*)\""
+                        | search NOT (instanceId=* OR networkId=*)
+                        | rex field=rela "\"(?<vpcId>vpc-.*?)\""
+                        | table resourceId, tags.Name, configuration.groupName, region, vpcId
+                        | lookup regions region OUTPUT label as region
+                        | rename resourceId as "Resource ID", tags.Name as Name, configuration.groupName as "Group Name", region as Region, vpcId as "VPC ID"
+                    ]]>
+                </query>
+                <earliest>1</earliest>
+                <latest>now</latest>
+            </search>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-config-resources($accountId$, $region$, "AWS::EC2::SecurityGroup")` resourceId=$row.Resource ID$&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+            <option name="drilldown">row</option>
+        </table>
+    </row>
+
+    <row>
+        <chart>
+            <title>Security Group Activity Over Time</title>
+            <search>
+                <query>
+                    | savedsearch "CloudTrail Timechart Search"
+                    | search $accountId$ $region$
+                    | `cloudtrail_service("Security Groups", $notable$)`
+                    | timechart sum(count) by eventName
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <option name="charting.chart">column</option>
+            <option name="charting.chart.stackMode">stacked</option>
+            <option name="charting.legend.placement">right</option>
+            <option name="charting.legend.masterLegend">null</option>
+            <option name="charting.axisTitleX.text">Time</option>
+            <option name="charting.axisTitleY.text">Security Group Activity</option>
+        </chart>
+    </row>
+
+    <row>
+        <table>
+            <title>Most Recent Security Group Activity</title>
+            <searchString>
+                <![CDATA[
+                    `aws-cloudtrail($accountId$, $region$)`
+                    | `cloudtrail_service("Security Groups", $notable$)` | head 100
+                    | fields eventName eventTime sourceIPAddress userIdentity.arn requestParameters.* responseElements.*
+                    | rename userIdentity.arn as arn responseElements._return as return
+                    | rename requestParameters.groupId as groupId, requestParameters.groupName as groupName, requestParameters.groupDescription as groupDescription, requestParameters.vpcId as vpcId
+                    | fields - requestParameters.* responseElements.* _raw _time
+                    | table eventName eventTime sourceIPAddress arn *
+                    | fillnull value="N/A"
+                    | rename eventName as "Event Name", eventTime as "Event Time", sourceIPAddress as "Source IP Address", arn as ARN, groupDescription as "Group Description", groupId as "Group ID", groupName as "Group Name", return as "Return", vpcId as "VPC ID"
+                ]]>
+            </searchString>
+            <earliestTime>$earliest$</earliestTime>
+            <latestTime>$latest$</latestTime>
+            <option name="count">8</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">true</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">Event Name</option>
+            <option name="cell.cellRange">true</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` eventName=$row.Event Name$ eventTime=TERM($row.Event Time$)&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </table>
+    </row>
+
+    <row>
+        <table>
+            <title>Authorize and Revoke Activity</title>
+            <searchString>
+                <![CDATA[
+                  `aws-cloudtrail($accountId$, $region$)` eventSource=ec2* eventName=RevokeSecurityGroup* OR eventName=AuthorizeSecurityGroup*
+                  | fields eventName eventTime sourceIPAddress userIdentity.arn requestParameters.* responseElements.*
+                  | foreach requestParameters.ipPermissions.items{}.ipRanges.items{}.* [eval <<MATCHSTR>>='<<FIELD>>']
+                  | foreach requestParameters.ipPermissions.items{}.* [eval <<MATCHSTR>>='<<FIELD>>']
+                  | eval ipProtocol=if(ipProtocol=-1, "ALL", ipProtocol)
+                  | eval portRange=mvzip(fromPort, toPort, "-")
+                  | eval direction = case(match(eventName, ".*Ingress"), "ingress", match(eventName, ".*Egress"), "egress")
+                  | rename userIdentity.arn as arn responseElements._return as return requestParameters.groupId as groupId
+                  | fields - *items* responseElements.* requestParameters.* toPort fromPort _time _raw
+                  | table eventName eventTime sourceIPAddress arn *
+                  | fillnull value="N/A"
+                  | rename eventName as "Event Name", eventTime as "Event Time", sourceIPAddress as "Source IP Address", arn as ARN, cidrIp as "CIDR IP", direction as "Direction", groupId as "Group ID", ipProtocol as "IP Protocol", portRange as "Port Range", return as "Return"
+                ]]>
+            </searchString>
+            <earliestTime>$earliest$</earliestTime>
+            <latestTime>$latest$</latestTime>
+            <option name="count">8</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">true</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">Event Name</option>
+            <option name="cell.cellRange">true</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` eventName=$row.Event Name$ eventTime=TERM($row.Event Time$)&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </table>
+    </row>
+    <row>
+        <table>
+            <title>Security Group Error Activity</title>
+            <search>
+                <query>
+                    `aws-cloudtrail($accountId$, $region$)` errorCode eventSource=ec2*
+                    | `cloudtrail_service("Security Groups", $notable$)`
+                    | spath requestParameters
+                    | rename userIdentity.arn as arn
+                    | table eventName, eventTime, errorCode, errorMessage, sourceIPAddress arn requestParameters
+                    | rename eventName as "Event Name", eventTime as "Event Time", errorCode as "Error Code", errorMessage as "Error Message" sourceIPAddress as "Source IP Address", arn as ARN, requestParameters as "Request Parameters"
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <option name="count">8</option>
+            <option name="displayRowNumbers">false</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">false</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">Event Name</option>
+            <option name="cell.cellRange">true</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` eventTime=TERM($row.Event Time$) | `cloudtrail_service("Security Groups", $notable$)` errorCode&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </table>
+    </row>
+</form>

@@ -1,0 +1,218 @@
+<form script="base_page.js">
+    <label>Key Pairs Activity</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="notable" searchWhenChanged="true">
+            <label>Notable</label>
+            <default>1</default>
+            <choice value="0">False</choice>
+            <choice value="1">True</choice>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+
+    <search id="baseCloudTrailSearch">
+        <query>
+            | savedsearch "CloudTrail Base Search"
+            | search $accountId$ $region$
+            | `cloudtrail_service("Key Pairs", $notable$)`
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <single>
+            <title>In-Use Key Pairs</title>
+            <search>
+                <query>
+                   `aws-description-resource($accountId$, $region$, "ec2_instances")`
+                   | stats dc(key_name) as count
+                   | nadefault count
+                </query>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </search>
+            <option name="field">count</option>
+        </single>
+        <single>
+            <title>Error Events</title>
+            <search base="baseCloudTrailSearch">
+                <query>
+                    stats sum(count) as count sum(errors) as errors
+                    | nadefault errors count
+                    | eval _total_name="events", _total_field=count
+                </query>
+            </search>
+            <option name="field">errors</option>
+        </single>
+        <chart>
+            <title>Key Pair Actions</title>
+            <search base="baseCloudTrailSearch">
+                <query>
+                    <![CDATA[
+                        stats sum(count) as count by eventName
+                        | sort - Errors
+                    ]]>
+                </query>
+            </search>
+            <option name="charting.chart">pie</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` | `cloudtrail_service("Key Pairs", $notable$)` eventName=$click.value$&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </chart>
+    </row>
+
+    <row>
+        <table>
+            <title>Key Pair Usage</title>
+            <search>
+                <query>
+                    `aws-description-resource($accountId$, $region$, "ec2_instances")`
+                    | stats dc(id) as count by key_name region
+                    | sort - count
+                    | eventstats sum(count) as total
+                    | eval Percentage=100*count/total
+                    | eval Percentage=tostring(round(Percentage, 0))+"%"
+                    | fields - total
+                    | rename key_name as "Key Name", region as Region, count as "Instance Count"
+                </query>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </search>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search sourcetype="aws:description" source="*:ec2_instances" key_name=$click.value$ | stats values(id) as Instances by key_name | table key_name Instances&earliest=-1d
+                    ]]>
+                </link>
+            </drilldown>
+            <option name="count">6</option>
+            <option name="drilldown">row</option>
+            <option name="cell.percentage">Percentage</option>
+        </table>
+        <chart>
+            <title>Key Pair Activity Over Time</title>
+            <search>
+                <query>
+                    | savedsearch "CloudTrail Timechart Search"
+                    | search $accountId$ $region$
+                    | `cloudtrail_service("Key Pairs", $notable$)`
+                    | timechart sum(count) by eventName
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <option name="charting.chart">column</option>
+            <option name="charting.chart.stackMode">stacked</option>
+            <option name="charting.legend.placement">right</option>
+            <option name="charting.legend.masterLegend">null</option>
+            <option name="charting.axisTitleX.text">Time</option>
+            <option name="charting.axisTitleY.text">Key Pair Activity</option>
+        </chart>
+    </row>
+
+    <row>
+        <table>
+            <title>Most Recent Key Pair Activity</title>
+            <search>
+                <query>
+                    <![CDATA[
+                        `aws-cloudtrail($accountId$, $region$)` eventSource=ec2*
+                        | `cloudtrail_service("Key Pairs", $notable$)` | head 100
+                        | fields eventName eventTime sourceIPAddress userIdentity.arn requestParameters.* responseElements.*
+                        | fields - *publicKeyMaterial* responseElements.keyName
+                        | rename userIdentity.arn as arn responseElements._return as return
+                        | foreach requestParameters.* [eval <<MATCHSTR>>='<<FIELD>>']
+                        | foreach responseElements.* [eval <<MATCHSTR>>='<<FIELD>>']
+                        | fields - requestParameters.* responseElements.* _raw _time
+                        | table eventName eventTime sourceIPAddress arn *
+                        | fields - keyMaterial
+                        | fillnull value="N/A"
+                        | rename eventName as "Event Name", eventTime as "Event Time", sourceIPAddress as "Source IP Address", arn as ARN, keyFingerprint as "Key Fingerprint", keyName as "Key Name"
+                    ]]>
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <option name="count">10</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">true</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">Event Name</option>
+            <option name="cell.cellRange">true</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` eventTime=TERM($row.Event Time$) | `cloudtrail_service("Key Pairs", $notable$)`&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </table>
+    </row>
+    <row>
+        <table>
+            <title>Key Pair Error Activity</title>
+            <search>
+                <query>
+                    `aws-cloudtrail($accountId$, $region$)` errorCode eventSource=ec2*
+                    | `cloudtrail_service("Key Pairs", $notable$)`
+                    | spath requestParameters
+                    | rename userIdentity.arn as arn responseElements._return as return
+                    | table eventName, eventTime, errorCode, errorMessage, sourceIPAddress arn requestParameters
+                    | rename eventName as "Event Name", eventTime as "Event Time", errorCode as "Error Code", errorMessage as "Error Message" sourceIPAddress as "Source IP Address", arn as ARN, requestParameters as "Request Parameters"
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <option name="count">8</option>
+            <option name="displayRowNumbers">false</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">false</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">Event Name</option>
+            <option name="cell.cellRange">true</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` eventTime=TERM($row.Event Time$) | `cloudtrail_service("Key Pairs", $notable$)` errorCode&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </table>
+    </row>
+</form>

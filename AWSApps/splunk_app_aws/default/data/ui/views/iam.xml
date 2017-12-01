@@ -1,0 +1,223 @@
+<form script="base_page.js">
+    <label>IAM Activity</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="notable" searchWhenChanged="true">
+            <label>Notable</label>
+            <default>1</default>
+            <choice value="0">False</choice>
+            <choice value="1">True</choice>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+
+    <search id="baseCloudTrailSearch">
+        <query>
+            | savedsearch "CloudTrail Base Search"
+            | search $accountId$ $region$
+            | `cloudtrail_service("IAM", $notable$)`
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <single>
+            <title>Error Events</title>
+            <search base="baseCloudTrailSearch">
+                <query>
+                    stats sum(count) as count sum(errors) as errors
+                    | nadefault errors count
+                    | eval _total_name="events", _total_field=count
+                </query>
+            </search>
+            <option name="field">errors</option>
+        </single>
+
+        <table>
+            <title>Activity by User</title>
+            <search base="baseCloudTrailSearch">
+                <query>
+                    <![CDATA[
+                        stats sum(Unauthorized) as Unauthorized sum(errors) as Errors by userName
+                        | sort - Errors
+                        | rename userName as Username
+                    ]]>
+                </query>
+            </search>
+            <option name="count">10</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">true</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+        </table>
+
+        <chart>
+            <title>IAM Actions</title>
+            <search base="baseCloudTrailSearch">
+                <query>
+                    <![CDATA[
+                        stats sum(count) as count by eventName
+                        | sort - Errors
+                    ]]>
+                </query>
+            </search>
+            <option name="charting.chart">pie</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` | `cloudtrail_service("IAM", $notable$)` eventName=$click.value$&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </chart>
+
+    </row>
+
+    <row>
+        <chart>
+            <title>IAM Activity Over Time</title>
+            <search>
+                <query>
+                    | savedsearch "CloudTrail Timechart Search"
+                    | search $accountId$ $region$
+                    | `cloudtrail_service("IAM", $notable$)`
+                    | timechart sum(count) by eventName
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <option name="charting.chart">column</option>
+            <option name="charting.chart.stackMode">stacked</option>
+            <option name="charting.legend.placement">right</option>
+            <option name="charting.legend.masterLegend">null</option>
+            <option name="charting.axisTitleX.text">Time</option>
+            <option name="charting.axisTitleY.text">IAM Activity</option>
+        </chart>
+    </row>
+
+    <row>
+        <table>
+            <title>Authorized vs Unauthorized Activity</title>
+            <search base="baseCloudTrailSearch">
+                <query>
+                    <![CDATA[
+                        eval Authorized=count-Unauthorized
+                        | stats sum(Authorized) as Authorized sum(Unauthorized) as Unauthorized by eventName
+                        | sort - Unauthorized
+                        | rename eventName as "Event Name"
+                    ]]>
+                </query>
+            </search>
+            <option name="count">8</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">true</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">Event Name</option>
+            <option name="cell.cellRange">true</option>
+            <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-cloudtrail($accountId$, $region$)` eventName=$row.Event Name$ | lookup unauthorized_errorCode errorCode OUTPUT Unauthorized | search Unauthorized=true&$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+        </table>
+        <table>
+            <title>Most Recent IAM Activity</title>
+            <search>
+                <query>
+                    <![CDATA[
+                        `aws-cloudtrail($accountId$, $region$)` eventSource=iam*
+                        | `cloudtrail_service("IAM", $notable$)` | head 100
+                        | fields eventName eventTime sourceIPAddress userIdentity.arn requestParameters.* responseElements.*
+                        | rename userIdentity.arn as arn
+                        | foreach requestParameters.* [eval <<MATCHSTR>>='<<FIELD>>']
+                        | foreach responseElements.* [eval <<MATCHSTR>>='<<FIELD>>']
+                        | fields - requestParameters.* responseElements.* _raw _time createTime
+                        | table eventName eventTime sourceIPAddress arn userName
+                        | fillnull value="N/A"
+                        | rename eventName as "Event Name", eventTime as "Event Time", sourceIPAddress as "Source IP Address", arn as ARN, userName as "User Name"
+                    ]]>
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <option name="count">8</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">true</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">Event Name</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` eventTime=TERM($row.Event Time$) | `cloudtrail_service("IAM", $notable$)`&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </table>
+    </row>
+    <row>
+        <table>
+            <title>IAM Error Activity</title>
+            <search>
+                <query>
+                    `aws-cloudtrail($accountId$, $region$)` errorCode eventSource=iam*
+                    | `cloudtrail_service("IAM", $notable$)`
+                    | spath requestParameters | rename userIdentity.arn as arn responseElements._return as return | fields eventName, eventTime, errorCode, errorMessage, sourceIPAddress arn requestParameters | table eventName, eventTime, errorCode, errorMessage, sourceIPAddress arn requestParameters
+                    | rename eventName as "Event Name", eventTime as "Event Time", errorCode as "Error Code", errorMessage as "Error Message" sourceIPAddress as "Source IP Address", arn as ARN, requestParameters as "Request Parameters"
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <option name="count">8</option>
+            <option name="displayRowNumbers">false</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">false</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">Event Name</option>
+            <option name="cell.cellRange">true</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` eventTime=TERM($row.Event Time$) | `cloudtrail_service("IAM", $notable$)` errorCode&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </table>
+    </row>
+</form>

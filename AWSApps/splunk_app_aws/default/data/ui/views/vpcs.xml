@@ -1,0 +1,194 @@
+<form script="base_page.js">
+    <label>VPC Activity</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="notable" searchWhenChanged="true">
+            <label>Notable</label>
+            <default>1</default>
+            <choice value="0">False</choice>
+            <choice value="1">True</choice>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+
+    <search id="baseCloudTrailSearch">
+        <query>
+            | savedsearch "CloudTrail Base Search"
+            | search $accountId$ $region$
+            | `cloudtrail_service("VPC", $notable$)`
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <single>
+            <title>VPCs</title>
+            <search>
+                <query>
+                    `aws-description-resource($accountId$, $region$, "vpcs")`
+                    | stats count
+                    | nadefault count
+                </query>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </search>
+            <drilldown>
+                <link target="_blank">
+                   <![CDATA[
+                        search?q=search `aws-description-resource($accountId$, $region$, "vpcs")`
+                        |table id,region,cidr_block,instance_tenancy,state,is_default&$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+            <option name="field">count</option>
+        </single>
+        <single>
+            <title>Error Events</title>
+            <search base="baseCloudTrailSearch">
+                <query>
+                    stats sum(count) as count sum(errors) as errors
+                    | nadefault errors count
+                    | eval _total_name="events", _total_field=count
+                </query>
+            </search>
+            <option name="field">errors</option>
+        </single>
+        <chart>
+            <title>Network VPC Actions</title>
+            <search base="baseCloudTrailSearch">
+                <query>
+                    <![CDATA[
+                        stats sum(count) as count by eventName
+                        | sort - Errors
+                    ]]>
+                </query>
+            </search>
+            <option name="charting.chart">pie</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` eventName=$click.value$&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </chart>
+    </row>
+
+    <row>
+        <chart>
+            <title>VPC Activity Over Time</title>
+            <search>
+                <query>
+                    | savedsearch "CloudTrail Timechart Search"
+                    | search $accountId$ $region$
+                    | `cloudtrail_service("VPC", $notable$)`
+                    | timechart sum(count) by eventName
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <option name="charting.chart">column</option>
+            <option name="charting.chart.stackMode">stacked</option>
+            <option name="charting.legend.placement">right</option>
+            <option name="charting.legend.masterLegend">null</option>
+            <option name="charting.axisTitleX.text">Time</option>
+            <option name="charting.axisTitleY.text">VPC Activity</option>
+        </chart>
+    </row>
+
+    <row>
+        <table>
+            <title>Most Recent VPC Activity</title>
+            <searchString>
+                <![CDATA[
+                    `aws-cloudtrail($accountId$, $region$)` eventSource=ec2*
+                    | `cloudtrail_service("VPC", $notable$)` | head 100
+                    | fields eventName eventTime sourceIPAddress userIdentity.arn requestParameters.* responseElements.*
+                    | rename userIdentity.arn as arn responseElements._return as return
+                    | foreach requestParameters.* [eval <<MATCHSTR>>='<<FIELD>>']
+                    | foreach responseElements.* [eval <<MATCHSTR>>='<<FIELD>>']
+                    | fields - requestParameters.* responseElements.* _raw _time
+                    | table eventName eventTime sourceIPAddress arn
+                    | fillnull value="N/A"
+                    | rename eventName as "Event Name", eventTime as "Event Time", sourceIPAddress as "Source IP Address", arn as ARN
+                ]]>
+            </searchString>
+            <earliestTime>$earliest$</earliestTime>
+            <latestTime>$latest$</latestTime>
+            <option name="count">8</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">true</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">Event Name</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` eventName=$row.Event Name$ eventTime=TERM($row.Event Time$)&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </table>
+    </row>
+    <row>
+        <table>
+            <title>VPC Error Activity</title>
+            <search>
+                <query>
+                    `aws-cloudtrail($accountId$, $region$)` errorCode eventSource=ec2*
+                    | `cloudtrail_service("VPC", $notable$)`
+                    | spath requestParameters
+                    | rename userIdentity.arn as arn responseElements._return as return
+                    | table eventName, eventTime, errorCode, errorMessage, sourceIPAddress arn requestParameters
+                    | rename eventName as "Event Name", eventTime as "Event Time", errorCode as "Error Code", errorMessage as "Error Message" sourceIPAddress as "Source IP Address", arn as ARN, requestParameters as "Request Parameters"
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <option name="count">8</option>
+            <option name="displayRowNumbers">false</option>
+            <option name="wrap">true</option>
+            <option name="rowNumbers">false</option>
+            <option name="dataOverlayMode">none</option>
+            <option name="drilldown">row</option>
+            <option name="cell.eventName">Event Name</option>
+            <option name="cell.cellRange">true</option>
+            <drilldown>
+                <link target="_blank">
+                    <![CDATA[
+                        search?q=search `aws-cloudtrail($accountId$, $region$)` eventName=$row.Event Name$ errorCode eventTime=TERM($row.Event Time$)&earliest=$earliest$&latest=$latest$
+                    ]]>
+                </link>
+            </drilldown>
+        </table>
+    </row>
+</form>

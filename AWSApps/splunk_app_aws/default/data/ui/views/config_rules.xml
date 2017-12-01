@@ -1,0 +1,267 @@
+<form script="config_rules.js">
+    <label>Config Rules</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="rule" searchWhenChanged="true">
+            <label>Rule Name</label>
+            <choice value="*">All</choice>
+            <default>*</default>
+            <populatingSearch fieldForValue="ConfigRuleName" fieldForLabel="ConfigRuleName">
+                <![CDATA[ `aws-config-rule((aws_account_id="*"),  (region="**") , "")` | stats count by ConfigRuleName ]]>
+            </populatingSearch>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+
+    <row>
+        <panel>
+            <single>
+                <title>Active Config Rules</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-config-rule($accountId$, $region$, "")` $rule|rule2default$
+                            | stats dc(ConfigRuleId) as count by ConfigRuleState
+                            | eventstats sum(count) as total
+                            | search ConfigRuleState="ACTIVE"
+                            | nadefault count total
+                            | eval _total_name="rules", _total_field=total
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">count</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Non-Compliant Config Rules</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-config-rule($accountId$, $region$, ":complianceDetail")` $rule|rule2details$
+                            | eval uniqueConfigTag='EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName'.'EvaluationResultIdentifier.EvaluationResultQualifier.ResourceId'+account_id+region
+                            | dedup uniqueConfigTag
+                            | search ComplianceType=NON_COMPLIANT
+                            | stats dc(EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName) as count
+                            | appendcols [search `aws-config-rule($accountId$, $region$, "")` $rule|rule2default$ | stats dc(ConfigRuleId) as total]
+                            | table count, total
+                            | eval _total_name="rules", _total_field=total
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">count</option>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">none</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[0]</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Non-Compliant Resources</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-config-rule($accountId$, $region$, ":complianceDetail")` $rule|rule2details$
+                            | dedup EvaluationResultIdentifier.EvaluationResultQualifier.ResourceId
+                            | stats count by ComplianceType
+                            | eventstats sum(count) as total
+                            | search ComplianceType="NON_COMPLIANT"
+                            | nadefault count total
+                            | eval _total_name="resources", _total_field=total
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">count</option>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">none</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[0]</option>
+            </single>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Compliant vs Non-Compliant Config Rules</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-config-rule($accountId$, $region$, ":complianceDetail")` $rule|rule2details$
+                            | eval uniqueConfigTag='EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName'+account_id+region
+                            | dedup uniqueConfigTag
+                            | stats count by ComplianceType
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-config-rule($accountId$, $region$, ":complianceDetail")` $rule|rule2details$
+                            | eval uniqueConfigTag='EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName'.account_id.region
+                            | dedup uniqueConfigTag
+                            | search ComplianceType="$click.value$"&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Compliant vs Non-Compliant Resources</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-config-rule($accountId$, $region$, ":complianceDetail")` $rule|rule2details$
+                            | dedup EvaluationResultIdentifier.EvaluationResultQualifier.ResourceId EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName
+                            | stats count by ComplianceType
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Non-Compliant Resources by Config Rules</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-config-rule($accountId$, $region$, ":complianceDetail")` $rule|rule2details$
+                            | dedup EvaluationResultIdentifier.EvaluationResultQualifier.ResourceId
+                            | search ComplianceType="NON_COMPLIANT"
+                            | stats count by EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName
+                            | rename EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName as "Rule Name"
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <table>
+                <title>Active Config Rules Summary</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-config-rule($accountId$, $region$, "")` ConfigRuleState="ACTIVE" $rule|rule2default$
+                            | dedup ConfigRuleId
+                            | sort 0 ConfigRuleName
+                            | eval type=if('Source.Owner'="AWS", "AWS Managed Rule", "Custom Rule")
+                            | table ConfigRuleName type region account_id Description
+                            | rename ConfigRuleName as "Rule Name", region as "Region", account_id as "Account ID", type as "Type"
+                        ]]>
+                    </query>
+                </search>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="drilldown">cell</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="count">10</option>
+            </table>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <table id="nonCompliantResourceDetails">
+                <title>Non-Compliant Resource Details</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-config-rule($accountId$, $region$, ":complianceDetail")` $rule|rule2details$
+                            | dedup EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName, EvaluationResultIdentifier.EvaluationResultQualifier.ResourceId, region, account_id
+                            | search ComplianceType=NON_COMPLIANT
+                            | sort 0 EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName
+                            | eval ResultRecordedTime = substr(ResultRecordedTime, 1, 19), ResourceId = 'EvaluationResultIdentifier.EvaluationResultQualifier.ResourceId', ResourceType = 'EvaluationResultIdentifier.EvaluationResultQualifier.ResourceType', Link = ResourceId + "," + ResourceType
+                            | table EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName region account_id ResourceId ResourceType ResultRecordedTime Link
+                            | rename EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName as "Rule Name", region as "Region", account_id as "Account ID", ResourceId as "Resource Id", ResourceType as "Resource Type", ResultRecordedTime as "Recorded Time"
+                        ]]>
+                    </query>
+                </search>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="drilldown">cell</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="count">10</option>
+            </table>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Non-Compliant Resources Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-config-rule($accountId$, $region$, ":complianceDetail")` $rule|rule2details$ ComplianceType="NON_COMPLIANT"
+                            | timechart dc(EvaluationResultIdentifier.EvaluationResultQualifier.ResourceId) as count by EvaluationResultIdentifier.EvaluationResultQualifier.ConfigRuleName
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Latency (ms)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+</form>

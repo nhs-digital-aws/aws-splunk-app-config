@@ -1,0 +1,70 @@
+<form script="rds.js">
+  <label>Relational Database Service</label>
+  <fieldset submitButton="false">
+    <input type="multiselect" token="accountId" searchWhenChanged="true">
+      <label>Account ID</label>
+      <choice value="*">All</choice>
+      <search>
+        <query>
+          <![CDATA[
+          | aclinputlookup all_account_ids
+          | mvcombine delim=", " name
+          | nomv name
+          | eval title=account_id." (".name.")"
+          ]]>
+        </query>
+      </search>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>account_id</fieldForValue>
+      <prefix> (</prefix>
+      <suffix>) </suffix>
+      <valuePrefix>aws_account_id="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+    </input>
+    <input type="multiselect" token="region" searchWhenChanged="true">
+      <label>Regions</label>
+      <choice value="*">All</choice>
+      <search>
+        <query>
+          <![CDATA[
+          | inputlookup regions
+          ]]>
+        </query>
+      </search>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>region</fieldForValue>
+      <prefix>(</prefix>
+      <valuePrefix>region="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+      <suffix>)</suffix>
+    </input>
+    <input type="time" searchWhenChanged="true">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <html>
+      <div>
+        <div id="input_rds_instances" style="width: 700px;" />
+        <div style="clear:both" />
+        <div id="input_metric_names" style="width: 700px;" />
+      </div>
+    </html>
+  </fieldset>
+  <row rejects="$form.dimensionFilter$">
+    <panel>
+      <html>
+        <div>* Please select one or more RDS instances.</div>
+      </html>
+    </panel>
+  </row>
+  <row depends="$form.dimensionFilter$">
+    <panel>
+      <html id="table_rds_instance_details" />
+    </panel>
+  </row>
+</form>

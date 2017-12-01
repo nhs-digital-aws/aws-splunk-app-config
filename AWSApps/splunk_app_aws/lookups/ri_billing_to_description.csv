@@ -1,0 +1,11 @@
+billing,description,field
+On Demand,default,tenancy
+Dedicated,dedicated,tenancy
+Dedicated Usage,dedicated,tenancy
+Linux,Linux/UNIX,platform
+RHEL,Red Hat Enterprise Linux,platform
+SUSE,SUSE Linux,platform
+Windows,Windows,platform
+Windows with SQL Std,Windows with SQL Server Standard,platform
+Windows with SQL Web,Windows with SQL Server Web,platform
+Windows with SQL Server,Windows with SQL Server Enterprise,platform

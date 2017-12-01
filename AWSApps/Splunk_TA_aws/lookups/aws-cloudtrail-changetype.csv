@@ -1,0 +1,14 @@
+eventSource,change_type
+iam.amazonaws.com,IAM
+ec2.amazonaws.com,EC2
+sts.amazonaws.com,STS
+sts.us-east-1.amazonaws.com,STS
+sts.us-west-2.amazonaws.com,STS
+sts.us-west-1.amazonaws.com,STS
+sts.eu-west-1.amazonaws.com,STS
+sts.eu-central-1.amazonaws.com,STS
+sts.ap-southeast-1.amazonaws.com,STS
+sts.ap-southeast-2.amazonaws.com,STS
+sts.ap-northeast-1.amazonaws.com,STS
+sts.sa-east-1.amazonaws.com,STS
+sns.amazonaws.com,SNS

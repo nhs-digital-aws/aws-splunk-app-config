@@ -1,0 +1,15 @@
+[
+    {
+        "stanzas":[
+            {
+                "name": "description-01",
+                "account": "aws-account-0",
+                "aws_iam_role": "aws-iam-role-0",
+                "regions": "us-east-1,us-east-2,us-west-1",
+                "apis": "ec2_volumes/3600,ec2_instances/3600,ec2_reserved_instances/3600",
+                "sourcetype": "aws:description",
+                "index": "default"
+            }
+        ]
+    }
+]

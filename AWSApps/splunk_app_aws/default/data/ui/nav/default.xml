@@ -1,0 +1,76 @@
+<nav search_view="search" color="#FD9805">
+
+
+    <collection label="Overview">
+        <view name="overview" default="true"/>
+        <view name="usage_overview"/>
+        <view name="security_overview"/>
+        <view name="insights_overview"/>
+        <view name="anomaly_overview"/>
+    </collection>
+
+    <view name="topology"/>
+
+    <view name="resource_timeline"/>
+
+    <collection label="Usage">
+        <view name="instance_usage"/>
+        <view name="individual_instance_usage"/>
+        <view name="ebs_usage"/>
+        <view name="individual_ebs_usage" />
+        <view name="elb_usage"/>
+        <view name="individual_elb_usage" />
+        <view name="rds" />
+        <view name="lambda_usage"/>
+        <view name="apigateway_usage"/>
+        <divider />
+        <view name="capacity_planner"/>
+        <view name="RI_planner"/>
+        <view name="ri_inventory"/>
+    </collection>
+
+    <collection label="Security">
+        <view name="network_acls"/>
+        <view name="security_groups"/>
+        <view name="iam"/>
+        <view name="key_pairs"/>
+        <view name="s3_data_event"/>
+        <view name="vpcs"/>
+        <view name="resource_activity"/>
+        <view name="user_activity"/>
+        <divider />
+        <view name="cloudfront_access_logs" />
+        <view name="elb_access_logs"/>
+        <view name="s3_access_logs"/>
+        <view name="vpc_flow_logs_traffic"/>
+        <view name="vpc_flow_logs_security"/>
+    </collection>
+
+    <collection label="Insights">
+        <view name="config_rules"/>
+        <view name="inspector"/>
+        <view name="personal_health"/>
+        <view name="ec2_insights"/>
+        <view name="elb_insights"/>
+        <view name="ebs_insights"/>
+        <view name="eip_insights"/>
+        <view name="sg_insights"/>
+        <view name="iam_insights"/>
+    </collection>
+
+    <collection label="Billing">
+        <view name="budget_planner"/>
+        <view name="estimated_billing"/>
+        <view name="monthly_billing"/>
+        <view name="detailed_billing"/>
+    </collection>
+
+    <collection label="Search">
+        <view name="dashboards"/>
+        <view name="reports"/>
+        <view name="alerts"/>
+        <view name="search"/>
+    </collection>
+
+    <view name="configure"/>
+</nav>

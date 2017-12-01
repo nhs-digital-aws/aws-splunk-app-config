@@ -1,0 +1,93 @@
+<form script="ec2_insights.js">
+    <label>EC2 Insights</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <fieldForValue>account_id</fieldForValue>
+            <fieldForLabel>title</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+                </query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <fieldForValue>region</fieldForValue>
+            <fieldForLabel>label</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[ |inputlookup regions ]]>
+                </query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="instance_type" searchWhenChanged="true">
+            <label>Instance Type</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <fieldForValue>instance_type</fieldForValue>
+            <fieldForLabel>instance_type</fieldForLabel>
+            <search base="baseInsights">
+                <query>
+                    stats count by instance_type
+                </query>
+            </search>
+        </input>
+        <input id="awstags" token="tags">
+        </input>
+    </fieldset>
+
+    <search id="baseInsights">
+        <query>
+            | rest services/saas-aws/splunk_app_aws_recommendation splunk_server=local
+            | search resource_type="i"
+            | fields ml_action resource_id timestamp
+            | join type=left resource_id [search earliest=-1d `aws-description-resource("*", "*", "ec2_instances")` $tags|tag2description$
+            | rename id as resource_id, tags.Name as resource_name
+            | fields resource_id resource_name region instance_type aws_account_id]
+        </query>
+    </search>
+
+    <row>
+        <panel>
+            <table id="insightsTable" depends="$recommendationEnabled$">
+                <search base="baseInsights">
+                    <query>
+                        search instance_type=$instance_type$ $region$ $accountId$
+                        | fillnull value="N/A"
+                        | rename resource_id as "Instance ID", resource_name as "Instance Name", ml_action as Action, aws_account_id as Account, instance_type as "Instance Type", region as Region
+                        | table Account "Instance ID" "Instance Name" "Instance Type" Region Action
+                    </query>
+                </search>
+                <option name="rowNumbers">false</option>
+                <option name="drilldown">row</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="count">10</option>
+                <drilldown>
+                    <link>
+                        <![CDATA[
+                            individual_instance_usage?form.instances=$row.Instance ID$&form.accountId=$form.accountId$&regions=$form.region$
+                        ]]>
+                    </link>
+                </drilldown>
+            </table>
+        </panel>
+    </row>
+</form>

@@ -1,0 +1,13 @@
+serviceID, serviceName, resourceType
+config, "Config Notification", ec2_instances
+inspector, "Amazon Inspector", ec2_instances
+rules, "Config Rules", ec2_instances
+cloudtrail, "CloudTrail", ec2_instances
+cloudtrail, "CloudTrail", classic_load_balancers
+cloudtrail, "CloudTrail", application_load_balancers
+cloudtrail, "CloudTrail", ec2_security_groups
+cloudtrail, "CloudTrail", ec2_key_pairs
+cloudtrail, "CloudTrail", vpc_network_acls
+cloudtrail, "CloudTrail", iam_users
+personalHeath, "Personal Health", ec2_instances
+sqsCustomEvents, "SQS Custom Events", ec2_instances

@@ -1,0 +1,8 @@
+label, resourceType
+"EC2 Instance", ec2_instances
+"Classic Load Balancer", classic_load_balancers
+"Application Load Balancer", application_load_balancers
+"Security Group", ec2_security_groups
+"Key Pair", ec2_key_pairs
+"Network ACL", vpc_network_acls
+"IAM User", iam_users

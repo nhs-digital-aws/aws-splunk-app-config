@@ -1,0 +1,422 @@
+<form script="base_page.js">
+    <label>Individual ELB Instances</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix>(</prefix>
+            <suffix>)</suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="elb_names" searchWhenChanged="true">
+            <label>ELB Name</label>
+            <search>
+                <query>
+                    `aws-description-elb($accountId$, $region$)`
+                    | `aws-resource-uniqLabel`
+                </query>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </search>
+            <fieldForLabel>uniq_label</fieldForLabel>
+            <fieldForValue>uniq_label</fieldForValue>
+            <prefix>(</prefix>
+            <suffix>)</suffix>
+            <valuePrefix>uniq_label="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Today</default>
+        </input>
+    </fieldset>
+
+    <row rejects="$elb_names$">
+        <panel>
+            <html>
+                <div>*Please selected at least one ELB.</div>
+            </html>
+        </panel>
+    </row>
+
+    <row depends="$elb_names$">
+        <panel>
+            <single>
+                <title>Total Requests</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-elb($accountId$, $region$)` metric_name=RequestCount
+                            | `aws-cloudwatch-dimension-rex("LoadBalancerName", "name")`
+                            | rex field=metric_dimensions "([ ,]|^)LoadBalancer=\[app/(?<name>.*?)/"
+                            | `aws-resource-uniqLabel`
+                            | search $elb_names$
+                            | stats sum(Sum) as count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-cloudwatch-elb($accountId$, $region$)` metric_name=RequestCount
+                            | stats sum(Sum) as count by metric_dimensions
+                            | nadefault count&earliest=$earliest$&latest=$latest$
+
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>ELB Error Requests</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-elb($accountId$, $region$)` (metric_name=HTTPCode_ELB_4XX OR metric_name=HTTPCode_ELB_5XX OR metric_name=HTTPCode_ELB_4XX_Count OR metric_name=HTTPCode_ELB_5XX_Count)
+                            | `aws-cloudwatch-dimension-rex("LoadBalancerName", "name")`
+                            | rex field=metric_dimensions "([ ,]|^)LoadBalancer=\[app/(?<name>.*?)/"
+                            | `aws-resource-uniqLabel`
+                            | search $elb_names$
+                            | stats sum(Sum) as count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-cloudwatch-elb($accountId$, $region$)` (metric_name=HTTPCode_ELB_4XX OR metric_name=HTTPCode_ELB_5XX OR metric_name=HTTPCode_ELB_4XX_Count OR metric_name=HTTPCode_ELB_5XX_Count)
+                            | stats sum(Sum) as count by metric_name, metric_dimensions
+                            | nadefault count&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">none</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[0]</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Backend Error Requests</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-elb($accountId$, $region$)` (metric_name=HTTPCode_Backend_4XX OR metric_name=HTTPCode_Backend_5XX OR metric_name=HTTPCode_Target_4XX_Count OR metric_name=HTTPCode_Target_5XX_Count)
+                            | `aws-cloudwatch-dimension-rex("LoadBalancerName", "name")`
+                            | rex field=metric_dimensions "([ ,]|^)LoadBalancer=\[app/(?<name>.*?)/"
+                            | `aws-resource-uniqLabel`
+                            | search $elb_names$
+                            | stats sum(Sum) as count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-cloudwatch-elb($accountId$, $region$)` (metric_name=HTTPCode_Backend_4XX OR metric_name=HTTPCode_Backend_5XX OR metric_name=HTTPCode_Target_4XX_Count OR metric_name=HTTPCode_Target_5XX_Count)
+                            | stats sum(Sum) as count by metric_name, metric_dimensions
+                            | nadefault count&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">none</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[0]</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Unhealthy EC2 Instances</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-clb($accountId$, $region$)`
+                            | `aws-resource-uniqLabel`
+                            | search $elb_names$
+                            | eval instances=mvzip('instances{}.instance_id', 'instances{}.state')
+                            | fields - _raw
+                            | mvexpand instances
+                            | rex field=instances "(?<instance_id>[^,]+),(?<instance_state>[^,]+)"
+                            | dedup instance_id
+                            | stats count(instance_id) as total, count(eval(instance_state="OutOfService")) as count
+                            | append [search `aws-description-alb($accountId$, $region$)`
+                                | `aws-resource-uniqLabel`
+                                | search $elb_names$
+                                | eval targets=mvzip('TargetGroups{}.TargetHealthDescriptions{}.Target.Id', 'TargetGroups{}.TargetHealthDescriptions{}.TargetHealth.State')
+                                | fields - _raw
+                                | mvexpand targets
+                                | rex field=targets "(?<instance_id>[^,]+),(?<instance_state>[^,]+)"
+                                | dedup instance_id
+                                | stats count(instance_id) as total, count(eval(instance_state!="healthy")) as count ]
+                            | stats sum(total) as total, sum(count) as count
+                            | nadefault total count
+                            | eval _total_name="EC2 Instances", _total_field=total
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-description-clb($accountId$, $region$)`
+                            | eval instances=mvzip('instances{}.instance_id', 'instances{}.state')
+                            | fields - _raw
+                            | mvexpand instances
+                            | rex field=instances "(%3F<instance_id>[^,]%2B),(%3F<instance_state>[^,]%2B)"
+                            | dedup instance_id
+                            | search instance_state="OutOfService"
+                            | append [search `aws-description-alb($accountId$, $region$)`
+                                | eval targets=mvzip('TargetGroups{}.TargetHealthDescriptions{}.Target.Id', 'TargetGroups{}.TargetHealthDescriptions{}.TargetHealth.State')
+                                | fields - _raw
+                                | mvexpand targets
+                                | rex field=targets "(%3F<instance_id>[^,]%2B),(%3F<instance_state>[^,]%2B)"
+                                | dedup instance_id
+                                | search instance_state!="healthy" ]
+                            | table name, instance_id, instance_state
+                            | rename name as "Load Balancer Name", instance_id as "Instance ID", instance_state as "Instance State"&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">none</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[0]</option>
+            </single>
+        </panel>
+    </row>
+    <row depends="$elb_names$">
+        <panel>
+            <table>
+                <title>ELB Details</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-elb($accountId$, $region$)`
+                            | `aws-resource-uniqLabel`
+                            | search $elb_names$
+                            | eval type=if(Type="application", "Application", "Classic")
+                            | table account_id, region, name, type, dns_name, vpc_id
+                            | rename account_id as "Account ID", region as Region, name as "ELB Name", type as "ELB Type", dns_name as "DNS Name", vpc_id as VPC
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <option name="count">3</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+        <panel>
+            <table>
+                <title>EC2 Instances</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-clb($accountId$, $region$)`
+                            | `aws-resource-uniqLabel`
+                            | search $elb_names$
+                            | eval instances=mvzip('instances{}.instance_id', 'instances{}.state')
+                            | search instances=*
+                            | fields - _raw
+                            | mvexpand instances
+                            | rex field=instances "(?<instance_id>[^,]+),(?<instance_state>[^,]+)"
+                            | eval instance_state=if(instance_state=="InService", "in service", "out of service")
+                            | append [search `aws-description-alb($accountId$, $region$)`
+                                | `aws-resource-uniqLabel`
+                                | search $elb_names$
+                                | eval targets=mvzip('TargetGroups{}.TargetHealthDescriptions{}.Target.Id', 'TargetGroups{}.TargetHealthDescriptions{}.TargetHealth.State')
+                                | search targets=*
+                                | fields - _raw
+                                | mvexpand targets
+                                | rex field=targets "(?<instance_id>[^,]+),(?<instance_state>[^,]+)" ]
+                            | join instance_id type="left" [search `aws-description-resource((aws_account_id="*"),  (region="*") , "ec2_instances")`
+                                | rename id as instance_id, tags.Name as instance_name ]
+                            | table region, name, instance_id, instance_name, instance_state
+                            | fillnull value="N/A"
+                            | rename region as "Region", name as "ELB Name", instance_id as "Instance ID", instance_state as "Instance State", instance_name as "Instance Name"
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <option name="count">5</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+                <option name="cell.cellRange">true</option>
+            </table>
+        </panel>
+    </row>
+    <row depends="$elb_names$">
+        <panel>
+            <chart>
+                <title>Latency Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-elb($accountId$, $region$)` (metric_name=Latency OR metric_name=TargetResponseTime)
+                            | `aws-cloudwatch-dimension-rex("LoadBalancerName", "name")`
+                            | rex field=metric_dimensions "([ ,]|^)LoadBalancer=\[app/(?<name>.*?)/"
+                            | `aws-resource-uniqLabel`
+                            | search $elb_names$
+                            | eval latency=Average*1000
+                            | timechart avg(latency) by uniq_label
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.text">Latency(ms)</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+    <row depends="$elb_names$">
+        <panel>
+            <chart>
+                <title>Request Count Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-elb($accountId$, $region$)` metric_name=RequestCount
+                            | `aws-cloudwatch-dimension-rex("LoadBalancerName", "name")`
+                            | rex field=metric_dimensions "([ ,]|^)LoadBalancer=\[app/(?<name>.*?)/"
+                            | `aws-resource-uniqLabel`
+                            | search $elb_names$
+                            | timechart sum(Sum) by uniq_label
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">collapsed</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>HTTP Backend Code Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-elb($accountId$, $region$)` (metric_name=HTTPCode_Backend_2XX OR metric_name=HTTPCode_Backend_3XX OR metric_name=HTTPCode_Backend_4XX OR metric_name=HTTPCode_Backend_5XX OR metric_name=HTTPCode_Target_2XX_Count OR metric_name=HTTPCode_Target_3XX_Count OR metric_name=HTTPCode_Target_4XX_Count OR HTTPCode_Target_5XX_Count)
+                            | `aws-cloudwatch-dimension-rex("LoadBalancerName", "name")`
+                            | rex field=metric_dimensions "([ ,]|^)LoadBalancer=\[app/(?<name>.*?)/"
+                            | `aws-resource-uniqLabel`
+                            | search $elb_names$
+                            | eval status_code = case(metric_name == "HTTPCode_Backend_2XX" OR metric_name == "HTTPCode_Target_2XX_Count", "2XX", metric_name == "HTTPCode_Backend_3XX" OR metric_name == "HTTPCode_Target_3XX_Count", "3XX", metric_name == "HTTPCode_Backend_4XX" OR metric_name == "HTTPCode_Target_4XX_Count", "4XX", metric_name == "HTTPCode_Backend_5XX" OR metric_name == "HTTPCode_Target_5XX_Count", "5XX")
+                            | timechart sum(Sum) by status_code
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">collapsed</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+</form>

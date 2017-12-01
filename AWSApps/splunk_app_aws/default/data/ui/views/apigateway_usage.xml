@@ -1,0 +1,180 @@
+<form script="base_page.js">
+    <label>API Gateway</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="apiname" searchWhenChanged="true">
+            <label>Api Name</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <selectFirstChoice>true</selectFirstChoice>
+            <search>
+                <query>
+                    <![CDATA[
+                        `aws-cloudwatch-apigateway($accountId$, $region$)`
+                        | stats count by metric_dimensions
+                        | `aws-cloudwatch-dimension-rex("ApiName", "name")`
+                    ]]>
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+            <fieldForValue>name</fieldForValue>
+            <fieldForLabel>name</fieldForLabel>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>metric_dimensions="ApiName=[</valuePrefix>
+            <valueSuffix>]"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Total Count by API</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-apigateway($accountId$, $region$)` $apiname$ metric_name="Count"
+                            | `aws-cloudwatch-dimension-rex("ApiName", "name")`
+                            | stats sum(Average) as count by name
+                            | eval count = round(count, 2)
+                        ]]>
+                    </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+            </chart>
+        </panel>
+
+        <panel>
+            <chart>
+                <title>Total Error by API</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-apigateway($accountId$, $region$)` $apiname$ metric_name="*Error"
+                            | `aws-cloudwatch-dimension-rex("ApiName", "name")`
+                            | stats sum(Average) as count by name
+                            | eval count = round(count, 2)
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Total Count by API Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-apigateway($accountId$, $region$)` $apiname$ metric_name="Count"
+                            | `aws-cloudwatch-dimension-rex("ApiName", "name")`
+                            | timechart eval(round(sum(Average),2)) by name
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.chart">line</option>
+                <option name="drilldown">all</option>
+                <option name="charting.axisTitleY.visibility">collapsed</option>
+            </chart>
+        </panel>
+
+        <panel>
+            <chart>
+                <title>Total Error by API Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-apigateway($accountId$, $region$)` $apiname$ metric_name="*Error"
+                            | `aws-cloudwatch-dimension-rex("ApiName", "name")`
+                            | timechart eval(round(sum(Average),2)) by name
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.chart">line</option>
+                <option name="drilldown">all</option>
+                <option name="charting.axisTitleY.visibility">collapsed</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <table>
+                <title>Most Active Methods</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-apigateway($accountId$, $region$)` metric_name="Count"
+                            | `aws-cloudwatch-dimension-rex("ApiName", "name")`
+                            | chart sparkline eval(round(sum(Average),2)) as Count by name
+                            | sort 0 -Count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+            </table>
+        </panel>
+
+        <panel>
+            <table>
+                <title>Slowest Methods</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-apigateway($accountId$, $region$)` metric_name="Latency"
+                            | `aws-cloudwatch-dimension-rex("ApiName", "name")`
+                            | chart sparkline eval(round(avg(Average),2)) as Latency by name
+                            | sort 0 -Latency
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+            </table>
+        </panel>
+    </row>
+</form>

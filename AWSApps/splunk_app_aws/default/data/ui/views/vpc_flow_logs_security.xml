@@ -1,0 +1,277 @@
+<form script="base_page.js">
+    <label>VPC Flow Logs - Security Analysis</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" searchWhenChanged="true" token="interfaces">
+            <label>Interface ID</label>
+            <choice value="*">All</choice>
+            <default>*</default>
+            <delimiter> OR </delimiter>
+            <prefix>(</prefix>
+            <suffix>)</suffix>
+            <valuePrefix>interface_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <fieldForValue>interface_id</fieldForValue>
+            <fieldForLabel>interface_id</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[
+                        `aws-vpc-flow-log-index` source="dest_port" $accountId$ | stats count by interface_id
+                    ]]>
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+        </input>
+        <input type="dropdown" searchWhenChanged="true" token="protocol">
+            <label>Protocol</label>
+            <choice value="*">All</choice>
+            <default>*</default>
+            <fieldForValue>protocol</fieldForValue>
+            <fieldForLabel>protocol</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[
+                        `aws-vpc-flow-log-index` source="dest_port" $interfaces$ $accountId$ | stats count by protocol
+                    ]]>
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 4 hours</default>
+        </input>
+    </fieldset>
+
+    <search id="basic_src_ip">
+        <query>
+            <![CDATA[
+                `aws-vpc-flow-log-index` source="src_ip" protocol=$protocol$ $interfaces$ $accountId$
+                | stats sum(packets) as packets by City Country Region lat lon vpcflow_action src_ip
+            ]]>
+        </query>
+    </search>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Accepted vs. Rejected Traffic Over Time (Bytes)</title>
+                <search>
+                    <query>
+                        `aws-vpc-flow-log-index` source="dest_port" protocol=$protocol$ $interfaces$ $accountId$
+                        | dedup _time interface_id aws_account_id protocol vpcflow_action
+                        | timechart sum(total_bytes) by vpcflow_action span=1h
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">collapsed</option>
+                <option name="charting.axisTitleY2.visibility">collapsed</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">linear</option>
+                <option name="charting.chart">area</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">1</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">1</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">none</option>
+                <option name="charting.fieldColors">{REJECT:0xd93f3c,ACCEPT:0x65a637}</option>
+            </chart>
+        </panel>
+        <panel>
+            <map>
+                <title>Accepted vs. Rejected Traffic by Location</title>
+                <search base="basic_src_ip">
+                    <query>
+                        geostats sum(packets) by vpcflow_action
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                       <![CDATA[
+                            search?q=`aws-vpc-flow($accountId$, $interfaces$, $protocol$, "*")`
+                            | stats sum(packets) as Packets by src_ip vpcflow_action
+                            | iplocation src_ip
+                            | search lat>=$click.bounds.south$ lat<$click.bounds.north$ lon>=$click.bounds.west$ lon<$click.bounds.east$
+                            | stats sum(Packets) as Packets by src_ip Country City Region lat lon vpcflow_action
+                            | sort -Packets&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="mapping.choroplethLayer.colorBins">5</option>
+                <option name="mapping.choroplethLayer.colorMode">auto</option>
+                <option name="mapping.choroplethLayer.maximumColor">0xDB5800</option>
+                <option name="mapping.choroplethLayer.minimumColor">0x2F25BA</option>
+                <option name="mapping.choroplethLayer.neutralPoint">0</option>
+                <option name="mapping.choroplethLayer.shapeOpacity">0.75</option>
+                <option name="mapping.choroplethLayer.showBorder">1</option>
+                <option name="mapping.data.maxClusters">100</option>
+                <option name="mapping.drilldown">all</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+                <option name="mapping.map.panning">true</option>
+                <option name="mapping.map.scrollZoom">false</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="mapping.markerLayer.markerMaxSize">50</option>
+                <option name="mapping.markerLayer.markerMinSize">10</option>
+                <option name="mapping.markerLayer.markerOpacity">0.8</option>
+                <option name="mapping.showTiles">1</option>
+                <option name="mapping.tileLayer.maxZoom">7</option>
+                <option name="mapping.tileLayer.minZoom">0</option>
+                <option name="mapping.tileLayer.tileOpacity">1</option>
+                <option name="mapping.type">marker</option>
+                <option name="drilldown">all</option>
+                <option name="mapping.fieldColors">{REJECT:0xd93f3c,ACCEPT:0x65a637}</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="height">300</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+            </map>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table>
+                <title>Top Rejected Destination Ports</title>
+                <search>
+                    <query>
+                        `aws-vpc-flow-log-index` source="dest_port" protocol=$protocol$ $interfaces$ $accountId$
+                        | stats sum(packets) as packets by vpcflow_action dest_port
+                        | eval ACCEPT=if(vpcflow_action="ACCEPT", packets, 0) | eval REJECT=if(vpcflow_action="REJECT", packets, 0) | stats sum(ACCEPT) as ACCEPT sum(REJECT) as REJECT by dest_port
+                        | sort 10 -REJECT
+                        | eval Ratio=if(ACCEPT=0 and REJECT = 0, "- - -", round(REJECT/(ACCEPT+REJECT), 2))
+                        | sort -Ratio
+                        | fields - count
+                        | rename dest_port as "Destination Port", REJECT as Rejections, ACCEPT as Acceptions
+                        | table "Destination Port", Rejections, Acceptions, Ratio
+                    </query>
+                </search>
+                <drilldown>
+                    <set token="dest_port">$row.Destination Port$</set>
+                </drilldown>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">true</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="drilldown">cell</option>
+                <option name="count">10</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+        <panel>
+            <table>
+                <title>Top Rejected Source Addresses</title>
+                <search base="basic_src_ip">
+                    <query>
+                        eval ACCEPT=if(vpcflow_action="ACCEPT", packets, 0) | eval REJECT=if(vpcflow_action="REJECT", packets, 0) | stats sum(ACCEPT) as ACCEPT sum(REJECT) as REJECT by src_ip
+                        | sort 10 -REJECT
+                        | eval Ratio=if(ACCEPT=0 and REJECT = 0, "- - -", round(REJECT/(ACCEPT+REJECT), 2))
+                        | sort -Ratio
+                        | fields - count
+                        | rename src_ip as "Source IP" REJECT as Rejections, ACCEPT as Acceptions
+                        | table "Source IP", Rejections, Acceptions, Ratio
+                    </query>
+                </search>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">true</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="drilldown">cell</option>
+                <option name="count">10</option>
+                <option name="drilldown">row</option>
+                <drilldown>
+                    <set token="src_ip">$row.Source IP$</set>
+                </drilldown>
+            </table>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table depends="$dest_port$">
+                <title>Rejected Destination Port - Detailed</title>
+                <search>
+                    <query>
+                        `aws-vpc-flow-log-index` source="dest_port" protocol=$protocol$ dest_port=$dest_port$
+                        | stats sum(eval(if(vpcflow_action="REJECT",packets,0))) as REJECT sparkline(sum(eval(if(vpcflow_action="REJECT",packets,0)))) as REJECT_TREND sum(eval(if(vpcflow_action="ACCEPT",packets,0))) as ACCEPT sparkline(sum(eval(if(vpcflow_action="ACCEPT",packets,0)))) as ACCEPT_TREND
+                        | sort 10 -REJECT
+                        | eval Ratio=if(ACCEPT=0 and REJECT = 0, "- - -", round(REJECT/(ACCEPT+REJECT), 2))
+                        | sort -Ratio
+                        | rename REJECT as Rejections, ACCEPT as Acceptions
+                    </query>
+                </search>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="drilldown">cell</option>
+                <option name="count">1</option>
+                <option name="drilldown">row</option>
+                <format type="sparkline" field="REJECT_TREND">
+                    <option name="type">bar</option>
+                    <option name="barColor">#d93f3c</option>
+                    <option name="zeroColor">#d93f3c</option>
+                    <option name="barWidth">2</option>
+                </format>
+                <format type="sparkline" field="ACCEPT_TREND">
+                    <option name="type">bar</option>
+                    <option name="barColor">#65a637</option>
+                    <option name="zeroColor">#65a637</option>
+                    <option name="barWidth">2</option>
+                </format>
+            </table>
+        </panel>
+        <panel>
+            <table depends="$src_ip$">
+                <title>Rejected Source Address - Detailed</title>
+                <search>
+                    <query>
+                        `aws-vpc-flow-log-index` source="src_ip" protocol=$protocol$ $interfaces$ $accountId$ src_ip=$src_ip$
+                        | stats sum(eval(if(vpcflow_action="REJECT",packets,0))) as REJECT sparkline(sum(eval(if(vpcflow_action="REJECT",packets,0)))) as REJECT_TREND sum(eval(if(vpcflow_action="ACCEPT",packets,0))) as ACCEPT sparkline(sum(eval(if(vpcflow_action="ACCEPT",packets,0)))) as ACCEPT_TREND
+                        | sort 10 -REJECT
+                        | eval Ratio=if(ACCEPT=0 and REJECT = 0, "- - -", round(REJECT/(ACCEPT+REJECT), 2))
+                        | sort -Ratio
+                        | rename REJECT as Rejections, ACCEPT as Acceptions
+                    </query>
+                </search>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="drilldown">cell</option>
+                <option name="count">1</option>
+                <option name="drilldown">row</option>
+                <format type="sparkline" field="REJECT_TREND">
+                    <option name="type">bar</option>
+                    <option name="barColor">#d93f3c</option>
+                    <option name="zeroColor">#d93f3c</option>
+                    <option name="barWidth">2</option>
+                </format>
+                <format type="sparkline" field="ACCEPT_TREND">
+                    <option name="type">bar</option>
+                    <option name="barColor">#65a637</option>
+                    <option name="zeroColor">#65a637</option>
+                    <option name="barWidth">2</option>
+                </format>
+            </table>
+        </panel>
+    </row>
+</form>

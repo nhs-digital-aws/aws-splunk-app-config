@@ -1,0 +1,89 @@
+<form script="resource_timeline.js" hideTitle="true" hideEdit="true">
+    <label>Timeline</label>
+    <fieldset submitButton="true" autoRun="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID(s)</label>
+            <choice value="*">All</choice>
+            <search>
+                <query><![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]></query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+            <fieldForLabel>title</fieldForLabel>
+            <fieldForValue>account_id</fieldForValue>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Region(s)</label>
+            <choice value="*">All</choice>
+            <search>
+                <query><![CDATA[ |inputlookup regions ]]></query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+            <fieldForLabel>label</fieldForLabel>
+            <fieldForValue>region</fieldForValue>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="resourceType" searchWhenChanged="true">
+            <label>Resource Type</label>
+            <search>
+                <query><![CDATA[ |inputlookup resource_timeline_types ]]></query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+            <fieldForLabel>label</fieldForLabel>
+            <fieldForValue>resourceType</fieldForValue>
+            <selectFirstChoice>true</selectFirstChoice>
+            <change>
+                <condition value="*" label="*">
+                    <unset token="form.resources"></unset>
+                    <unset token="form.services"></unset>
+                </condition>
+            </change>
+        </input>
+        <input type="multiselect" token="resources" depends="$resourceSPL$" searchWhenChanged="true">
+            <label>Resource(s)</label>
+            <search>
+                <query>$resourceSPL$</query>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </search>
+            <fieldForLabel>title</fieldForLabel>
+            <fieldForValue>id</fieldForValue>
+            <allowCustomValues>true</allowCustomValues>
+            <delimiter>,</delimiter>
+        </input>
+        <input type="multiselect" token="services" depends="$resourceType$" searchWhenChanged="true">
+            <label>Service(s)</label>
+            <search>
+                <query><![CDATA[ |inputlookup resource_timeline_services | search resourceType=$resourceType$ | dedup serviceID ]]></query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+            <fieldForLabel>serviceName</fieldForLabel>
+            <fieldForValue>serviceID</fieldForValue>
+            <delimiter>,</delimiter>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+    <row>
+        <panel>
+            <html>
+                <div id="timeline-chart">
+                </div>
+            </html>
+        </panel>
+    </row>
+</form>

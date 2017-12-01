@@ -1,0 +1,254 @@
+<form script="inspector.js">
+  <label>Amazon Inspector</label>
+  <search id="search_findings_by_run">
+    <query>
+      `aws-inspector-findings`
+      serviceAttributes.assessmentRunArn="$runArn$"
+      `aws-inspector-rex-arn`
+      | search $accountId$ $region$
+      | dedup arn
+      | stats c as num by severity
+    </query>
+    <earliest>0</earliest>
+    <latest>now</latest>
+  </search>
+  <fieldset submitButton="false">
+    <input type="multiselect" token="accountId" searchWhenChanged="true">
+      <label>Account ID</label>
+      <choice value="*">All</choice>
+      <search>
+        <query>
+          <![CDATA[
+          | aclinputlookup all_account_ids
+          | mvcombine delim=", " name
+          | nomv name
+          | eval title=account_id." (".name.")"
+          ]]>
+        </query>
+      </search>
+      <fieldForValue>account_id</fieldForValue>
+      <fieldForLabel>title</fieldForLabel>
+      <prefix> (</prefix>
+      <suffix>) </suffix>
+      <valuePrefix>accountId="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+    </input>
+    <input type="multiselect" token="region" searchWhenChanged="true">
+      <label>Regions</label>
+      <choice value="*">All</choice>
+      <search>
+        <query>
+          <![CDATA[ | inputlookup regions ]]>
+        </query>
+      </search>
+      <fieldForValue>region</fieldForValue>
+      <fieldForLabel>label</fieldForLabel>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>region="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+    </input>
+    <input type="dropdown" token="runArn" searchWhenChanged="true" id="selectRun">
+      <label>Assessment Run</label>
+      <search>
+        <query>
+          <![CDATA[
+          `aws-inspector-runs`
+          `aws-inspector-rex-arn`
+          | search $accountId$ $region$
+          | fields arn name startedAt
+          | dedup arn
+          | eval label=name . " (" . substr(startedAt, 1, 19) . ")"
+          ]]>
+        </query>
+      </search>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>arn</fieldForValue>
+      <selectFirstChoice>true</selectFirstChoice>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <single>
+        <title>Completed Assessment Runs</title>
+        <search>
+          <query>
+            <![CDATA[
+            `aws-inspector-runs`
+            `aws-inspector-rex-arn`
+            | search $accountId$ $region$
+            | stats dc(arn) as runs, dc(template) as tpls
+            | eval _total_field=tpls, _total_name="Assessment Templates", _total_prefix="with"
+            ]]>
+          </query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+        <option name="field">runs</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Total Findings</title>
+        <search base="search_findings_by_run">
+          <query>
+            stats sum(num) as num `ensure_single_value(num)`
+          </query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>High Severity</title>
+        <search base="search_findings_by_run">
+          <query>
+            search severity=High `ensure_single_value(num)`
+          </query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0xd93f3c","0xd93f3c"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="underLabel">Findings</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Medium Severity</title>
+        <search base="search_findings_by_run">
+          <query>
+            search severity=Medium `ensure_single_value(num)`
+          </query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0xf58f39","0xf58f39"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="underLabel">Findings</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Low Severity</title>
+        <search base="search_findings_by_run">
+          <query>
+            search severity=Low `ensure_single_value(num)`
+          </query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+        <option name="rangeColors">["0xf7bc38","0xf7bc38"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="trendInterval">auto</option>
+        <option name="underLabel">Findings</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Informational Severity</title>
+        <search base="search_findings_by_run">
+          <query>
+            search severity=Informational `ensure_single_value(num)`
+          </query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="colorBy">value</option>
+        <option name="colorMode">none</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x65a637","0x65a637"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="showSparkline">1</option>
+        <option name="showTrendIndicator">1</option>
+        <option name="trendColorInterpretation">standard</option>
+        <option name="trendDisplayMode">absolute</option>
+        <option name="trendInterval">auto</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+        <option name="underLabel">Findings</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Findings</title>
+      <input id="select_severity" type="multiselect" token="severityFilter" searchWhenChanged="true">
+        <label>Severity</label>
+        <choice value="*">All</choice>
+        <choice value="High">High</choice>
+        <choice value="Medium">Medium</choice>
+        <choice value="Low">Low</choice>
+        <choice value="Informational">Informational</choice>
+        <default>*</default>
+        <initialValue>High,Medium</initialValue>
+        <prefix>(</prefix>
+        <suffix>)</suffix>
+        <valuePrefix>severity="</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <delimiter> OR </delimiter>
+      </input>
+      <input type="checkbox" id="findings_filter_chkbox">
+        <label></label>
+        <choice value="agentIdNotNull">Hide findings without security issues</choice>
+        <default>agentIdNotNull</default>
+        <initialValue>agentIdNotNull</initialValue>
+      </input>
+      <html id="findings_table"></html>
+    </panel>
+  </row>
+</form>

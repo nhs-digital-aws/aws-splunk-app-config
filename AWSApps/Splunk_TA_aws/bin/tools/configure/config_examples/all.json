@@ -1,0 +1,127 @@
+[
+    {
+        "rest_endpoint_name": "account",
+        "hostname": "hfw-01",
+        "stanzas":[
+            {
+              "name": "aws-account-0",
+              "key_id": "ABCDEFGHIJKLMNOPQRST",
+              "secret_key": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmn",
+              "category": "1"
+            }
+        ]
+    },
+    {
+        "rest_endpoint_name": "account",
+        "hostname": "hfw-02",
+        "stanzas":[
+            {
+              "name": "aws-account-1",
+              "key_id": "abcdefghijklmnopqrst",
+              "secret_key": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN",
+              "category": "1"
+            }
+        ]
+    },
+    {
+        "rest_endpoint_name": "config",
+        "hostname": "hfw-01",
+        "stanzas": [
+            {
+                "aws_account": "aws-account-0",
+                "aws_region": "us-east-1",
+                "polling_interval": "30",
+                "name": "config-01",
+                "sourcetype": "aws:config",
+                "sqs_queue": "Test-Stream",
+                "index": "default",
+                "enable_additional_notifications": "0"
+            }
+        ]
+    },
+    {
+        "rest_endpoint_name": "description",
+        "hostname": "hfw-02",
+        "stanzas":[
+            {
+                "name": "description-01",
+                "account": "aws-account-0",
+                "aws_iam_role": "aws-iam-role-0",
+                "regions": "us-east-1,us-east-2,us-west-1",
+                "apis": "ec2_volumes/3600,ec2_instances/3600,ec2_reserved_instances/3600",
+                "sourcetype": "aws:description",
+                "index": "default"
+            }
+        ]
+    },
+    {
+        "rest_endpoint_name": "incr-s3",
+        "hostname": "hfw-01",
+        "stanzas": [
+            {
+                "name": "s3-incr-01",
+                "aws_account": "aws-account-0",
+                "aws_iam_role": "aws-iam-role-0",
+                "host_name": "s3.amazonaws.com",
+                "bucket_name": "s3accesslogs-bucket",
+                "log_type": "cloudtrail",
+                "log_file_prefix": "AWSLogs/",
+                "log_start_date": "2010-01-01",
+                "interval": "1800",
+                "sourcetype": "aws:s3:accesslogs",
+                "index": "default"
+            }
+        ]
+    },
+    {
+        "rest_endpoint_name": "inspector",
+        "hostname": "hfw-02",
+        "stanzas": [
+            {
+                "name": "inspector-01",
+                "account": "aws-account-0",
+                "aws_iam_role": "aws_iam_role-0",
+                "regions": "eu-west-1,us-east-1,us-west-2",
+                "polling_interval": "300",
+                "sourcetype": "aws:inspector",
+                "index": "default"
+            }
+        ]
+    },
+    {
+        "rest_endpoint_name": "kinesis",
+        "hostname": "hfw-01",
+        "stanzas": [
+            {
+                "name": "kinesis-01",
+                "account": "aws-account-0",
+                "aws_iam_role": "aws-iam-role-0",
+                "region": "us-east-1",
+                "stream_names": "Test-Stream",
+                "init_stream_position": "TRIM_HORIZON",
+                "encoding": "",
+                "format": "",
+                "sourcetype": "aws:kinesis",
+                "index": "default"
+            }
+        ]
+    },
+    {
+        "rest_endpoint_name": "s3",
+        "hostname": "hfw-02",
+        "stanzas": [
+            {
+                "name": "s3-01",
+                "aws_account": "aws-account-0",
+                "aws_iam_role": "aws-iam-role-0",
+                "host_name": "s3.amazonaws.com",
+                "bucket_name": "cloudtrail-bucket",
+                "key_name": "AWSLogs/",
+                "initial_scan_datetime": "2010-01-01T00:00:00Z",
+                "polling_interval": "1800",
+                "sourcetype": "aws:cloudtrail",
+                "index": "default"
+            }
+        ]
+    }
+]

@@ -1,0 +1,351 @@
+# Translations template for PROJECT.
+# Copyright (C) 2015 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2015.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2015-07-20 14:54+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 1.3\n"
+
+#: package/appserver/static/js/views/AwsCloudBillingNewView.js:196
+#: package/appserver/static/js/views/AwsCloudConfigNewView.js:162
+#: package/appserver/static/js/views/AwsCloudTrailNewView.js:147
+msgid "Save"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsCloudConfigNewView.js:69
+msgid "Index non-payload notifications to help with troubleshooting."
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:35
+#: package/appserver/static/js/views/AwsInputOverviewView.js:37
+msgid "Accounts"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:38
+msgid "Services Enabled"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:39
+msgid "Regions Enabled"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:59
+#: package/appserver/static/js/views/AwsInputOverviewView.js:61
+#: package/appserver/static/js/views/AwsInputOverviewView.js:80
+#: package/appserver/static/js/views/AwsInputOverviewView.js:98
+#: package/appserver/static/js/views/AwsInputOverviewView.js:100
+msgid "Account Name"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:62
+#: package/appserver/static/js/views/AwsInputOverviewView.js:81
+msgid "Bucket"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:63
+msgid "Report Type"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:77
+#: package/appserver/static/js/views/AwsInputOverviewView.js:79
+msgid "Name"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:82
+msgid "Content"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:101
+msgid "Regions"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:102
+msgid "Groups"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:169
+#: package/appserver/static/js/views/cloudwatch_logs/sections/VPCGroupSection.js:221
+#: package/appserver/static/js/views/s3/sections/S3BucketSection.js:90
+#: package/appserver/static/js/views/s3/sections/S3KeysSection.js:91
+msgid "Loading..."
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:174
+msgid "Delete input: ''"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:175
+msgid "Are you sure you want to delete input: ''"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:176
+msgid "Cancel"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:177
+msgid "OK"
+msgstr ""
+
+#: package/appserver/static/js/views/AwsInputOverviewView.js:182
+msgid "Removing input..."
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:29
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:37
+msgid "Add"
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:30
+msgid ""
+"Could not authenticate to AWS. Please check your credentials and try "
+"again."
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:31
+msgid ""
+"It appears you are using an AWS account that does not have permissions to"
+" list S3 bucket names. Work with your AWS administrator to ensure the "
+"accounts you use have the required permissions."
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:32
+msgid ""
+"You can proceed with adding this account and change the IAM permissions "
+"later."
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:38
+msgid "Checking"
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:39
+msgid "Update"
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:40
+msgid "Continue"
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:63
+msgid "Friendly Name"
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:64
+msgid ""
+"Only alphanumeric , space, dash, underscore, and comma characters are "
+"supported for account names."
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:75
+msgid "AWS Account Key ID"
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:76
+msgid ""
+"Configure an AWS account key that the Splunk App for AWS can use to "
+"access your AWS data. You can configure multiple accounts. Work with your"
+" AWS administrator to ensure the accounts you use have the required "
+"permissions. <a>Learn more</a>"
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:90
+msgid "Password (AWS Account Secret Key)"
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:112
+msgid "Update AWS Account"
+msgstr ""
+
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:120
+#: package/appserver/static/js/views/aws_accounts/AddAwsAccountDialog.js:267
+msgid "Add AWS Account"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/Master.js:65
+msgid "Regions:"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/Master.js:70
+msgid "Services:"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/Master.js:75
+#: package/appserver/static/js/views/s3/Master.js:59
+msgid "Advanced Settings"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/Master.js:90
+#: package/appserver/static/js/views/cloudwatch_logs/Master.js:74
+#: package/appserver/static/js/views/s3/Master.js:75
+msgid "does not exist!"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/sections/AdvancedSection.js:28
+msgid "Granularity"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/sections/AdvancedSection.js:37
+msgid "1 minutes"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/sections/AdvancedSection.js:38
+msgid "360 minutes (6 hours)"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/sections/AdvancedSection.js:39
+msgid "minutes"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/sections/AdvancedSection.js:53
+msgid "Interval"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/sections/AdvancedSection.js:63
+#: package/appserver/static/js/views/s3/sections/AdvancedSection.js:41
+msgid "Index"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/sections/MetricsSection.js:134
+msgid "Metrics"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/sections/MetricsSection.js:168
+msgid "Dimensions"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/sections/MetricsSection.js:443
+msgid "Please choose AWS Account and Regions.."
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch/sections/MetricsSection.js:444
+msgid "Loading... it might take a while"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch_logs/Master.js:59
+msgid "VPC Log Groups:"
+msgstr ""
+
+#: package/appserver/static/js/views/cloudwatch_logs/sections/VPCGroupSection.js:220
+#: package/appserver/static/js/views/s3/sections/S3BucketSection.js:89
+msgid "Please choose AWS Account.."
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:17
+msgid "Configuration"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:19
+msgid "Config Inputs"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:20
+msgid "CloudTrail Inputs"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:21
+msgid "CloudWatch Inputs"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:22
+msgid "Billing Inputs"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:23
+msgid "S3 Inputs"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:24
+msgid "VPC Flow Log Inputs"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:27
+msgid "Config New Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:28
+msgid "CloudTrail New Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:29
+msgid "CloudWatch New Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:30
+msgid "Billing New Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:31
+msgid "S3 New Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:32
+msgid "VPC Flow Log New Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:35
+msgid "Config Edit Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:36
+msgid "CloudTrail Edit Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:37
+msgid "CloudWatch Edit Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:38
+msgid "Billing Edit Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:39
+msgid "S3 Edit Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/HeaderView.js:40
+msgid "VPC Flow Log Edit Input"
+msgstr ""
+
+#: package/appserver/static/js/views/common/TableView.js:40
+msgid "Entry"
+msgstr ""
+
+#: package/appserver/static/js/views/common/TableView.js:40
+msgid "Entries"
+msgstr ""
+
+#: package/appserver/static/js/views/s3/Master.js:49
+msgid "S3 Bucket:"
+msgstr ""
+
+#: package/appserver/static/js/views/s3/Master.js:54
+msgid "Folder/File name:"
+msgstr ""
+
+#: package/appserver/static/js/views/s3/sections/AdvancedSection.js:31
+msgid "Sourcetype"
+msgstr ""
+
+#: package/appserver/static/js/views/s3/sections/AdvancedSection.js:53
+msgid "Charset"
+msgstr ""
+
+#: package/appserver/static/js/views/s3/sections/AdvancedSection.js:65
+msgid "Blacklist"
+msgstr ""
+
+#: package/appserver/static/js/views/s3/sections/S3KeysSection.js:90
+msgid "Please choose S3 Bucket.."
+msgstr ""
+

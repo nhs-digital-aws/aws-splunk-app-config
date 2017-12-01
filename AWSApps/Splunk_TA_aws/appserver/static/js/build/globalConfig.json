@@ -1,0 +1,2403 @@
+{
+    "meta": {
+        "name": "Splunk_TA_aws",
+        "displayName": "Splunk Add-on for AWS",
+        "version": "4.4.0",
+        "apiVersion": "3.0.0",
+        "restRoot": "splunk_ta_aws"
+    },
+    "pages": {
+        "configuration":  {
+            "title": "Configurations",
+            "description": "Configure your account, proxy and logging level.",
+            "tabs": [
+                {
+                    "name": "aws_account",
+                    "title": "Account",
+                    "restHandlerName": "aws_account4ui_rh",
+                    "table": {
+                        "header": [
+                            {
+                                "field": "name",
+                                "label": "Name"
+                            },
+                            {
+                                "field": "key_id",
+                                "label": "Key ID"
+                            },
+                            {
+                                "field": "iam",
+                                "label": "Autodiscovered IAM Role",
+                                "customCell": {
+                                    "src": "CustomAccountCell"
+                                }
+                            },
+                            {
+                                "field": "category",
+                                "label": "Region Category",
+                                "customCell": {
+                                    "src": "CustomAccountCell"
+                                }
+                            },
+                            {
+                                "field": "refCount",
+                                "label": "Inputs"
+                            }
+                        ],
+                        "actions": [
+                            "edit",
+                            "delete"
+                        ]
+                    },
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true,
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 50,
+                                    "errorMsg": "Length of Name is restricted from 1 to 50."
+                                },
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[0-9|a-z|A-Z][\\w\\- ,]*$",
+                                    "errorMsg": "Characters of Name should start with alphanumeric and contain alphanumeric, space, dash, underscore or comma only."
+                                }
+                            ],
+                            "options": {
+                                "placeholder": "Name"
+                            }
+                        },
+                        {
+                            "field": "key_id",
+                            "label": "Key ID",
+                            "type": "text",
+                            "required": true,
+                            "options": {
+                                "placeholder": "AWS account key id"
+                            }
+                        },
+                        {
+                            "field": "secret_key",
+                            "label": "Secret Key",
+                            "type": "text",
+                            "required": true,
+                            "encrypted": true,
+                            "options": {
+                                "placeholder": "AWS account secret key"
+                            }
+                        },
+                        {
+                            "field": "category",
+                            "label": "Region Category",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "Global", "value": 1},
+                                    {"label": "GovCloud", "value": 2},
+                                    {"label": "China", "value": 4}
+                                ]
+                            },
+                            "defaultValue": 1
+                        }
+                    ]
+                },
+                {
+                    "name": "iam_roles",
+                    "title": "IAM Role",
+                    "restHandlerName": "aws_iam_role_rh",
+                    "table": {
+                        "header": [
+                            {
+                                "field": "name",
+                                "label": "Name"
+                            },
+                            {
+                                "field": "arn",
+                                "label": "Role ARN"
+                            }
+                        ],
+                        "actions": [
+                            "edit",
+                            "delete"
+                        ]
+                    },
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true,
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 50,
+                                    "errorMsg": "Length of Name is restricted from 1 to 50."
+                                },
+                                {
+                                    "type": "regex",
+                                    "pattern": "^\\w+$",
+                                    "errorMsg": "Characters of Name should match regex ^\\w+$ ."
+                                }
+                            ],
+                            "options": {
+                                "placeholder": "Name"
+                            }
+                        },
+                        {
+                            "field": "arn",
+                            "label": "Role ARN",
+                            "type": "text",
+                            "required": true,
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^arn:[^\\s:]+:iam::\\d+:role(:|/)[^/:\\s]+$",
+                                    "errorMsg": "Characters of Name should match regex ^arn:[^\\s:]+:iam::\\d+:role(:|/)[^/:\\s]+$ ."
+                                }
+                            ],
+                            "options": {
+                                "placeholder": "AWS IAM Role ARN"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "aws_proxy",
+                    "title": "Proxy",
+                    "entity": [
+                        {
+                            "field": "proxy_enabled",
+                            "label": "Enable",
+                            "type": "checkbox"
+                        },
+                        {
+                            "field": "host",
+                            "label": "Host",
+                            "type": "text",
+                            "validators": [
+                                {
+                                    "type": "url"
+                                }
+                            ],
+                            "options": {
+                                "placeholder": "Proxy Host"
+                            }
+                        },
+                        {
+                            "field": "port",
+                            "label": "Port",
+                            "type": "text",
+                            "validators": [
+                                {
+                                    "type": "number",
+                                    "range": [1, 65535]
+                                }
+                            ],
+                            "options": {
+                                "placeholder": "Proxy Port"
+                            }
+                        },
+                        {
+                            "field": "username",
+                            "label": "Username",
+                            "type": "text",
+                            "defaultValue": "",
+                            "options": {
+                                "placeholder": "Username"
+                            }
+                        },
+                        {
+                            "field": "password",
+                            "label": "Password",
+                            "type": "text",
+                            "defaultValue": "",
+                            "encrypted": true,
+                            "options": {
+                                "placeholder": "Password"
+                            }
+                        }
+                    ],
+                    "options": {
+                        "saveValidator": "function(formData) { if(!formData.proxy_enabled || formData.proxy_enabled === '0') {return true; } if(!formData.host) { return 'Input of \"Host\" can not be empty'; } if(!formData.port) { return 'Input of \"Port\" can not be empty'; } return true; }"
+                    }
+                },
+                {
+                    "name": "logging",
+                    "title": "Logging",
+                    "entity": [
+                        {
+                            "field": "billing",
+                            "label": "AWS Billing",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "config",
+                            "label": "AWS Config",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "cloudtrail",
+                            "label": "AWS CloudTrail",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "cloudwatch",
+                            "label": "AWS CloudWatch",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "s3",
+                            "label": "AWS Generic S3",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "s3_incremental",
+                            "label": "AWS Incremental S3",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "description",
+                            "label": "AWS Description",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "cloudwatch_logs",
+                            "label": "AWS CloudWatch Logs",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "kinesis",
+                            "label": "AWS Kinesis",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "inspector",
+                            "label": "AWS Inspector",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "config_rule",
+                            "label": "AWS Config Rules",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "sqs",
+                            "label": "AWS SQS",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        },
+                        {
+                            "field": "s3sqs",
+                            "label": "AWS SQS-Based S3",
+                            "type": "singleSelect",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {"label": "INFO", "value": "INFO"},
+                                    {"label": "DEBUG", "value": "DEBUG"},
+                                    {"label": "ERROR", "value": "ERROR"}
+                                ]
+                            },
+                            "defaultValue": "INFO"
+                        }
+                    ]
+                }
+            ]
+
+        },
+        "inputs": {
+            "title": "Inputs",
+            "description": "Create data inputs to collect data from AWS",
+            "table": {
+                "header": [
+                    {
+                        "field": "name",
+                        "label": "Input Name",
+                        "customCell": {
+                            "src": "CustomInputCell"
+                        }
+                    },
+                    {
+                        "field": "source",
+                        "label": "Data Type",
+                        "customCell": {
+                            "src": "CustomInputCell"
+                        }
+                    },
+                    {
+                        "field": "input",
+                        "label": "Input Type",
+                        "customCell": {
+                            "src": "CustomInputCell"
+                        }
+                    },
+                    {
+                        "field": "aws_account",
+                        "label": "Account",
+                        "customCell": {
+                            "src": "CustomInputCell"
+                        }
+                    },
+                    {
+                        "field": "aws_iam_role",
+                        "label": "Assume Role"
+                    },
+                    {
+                        "field": "index",
+                        "label": "Index"
+                    },
+                    {
+                        "field": "disabled",
+                        "label": "Status"
+                    },
+                    {
+                        "field": "sourcetype",
+                        "label": "Source Type"
+                    }
+                ],
+                "moreInfo": [
+                    {
+                        "field": "name",
+                        "label": "Name"
+                    },
+                    {
+                        "field": "account",
+                        "label": "Account"
+                    },
+                    {
+                        "field": "start_offset",
+                        "label": "Start Offset"
+                    },
+                    {
+                        "field": "interval",
+                        "label": "Interval"
+                    },
+                    {
+                        "field": "index",
+                        "label": "Index"
+                    },
+                    {
+                        "field": "disabled",
+                        "label": "Status"
+                    }
+                ],
+                "customRow": {
+                    "src": "CustomInputRow"
+                },
+                "actions": [
+                    "edit",
+                    "delete",
+                    "clone"
+                ]
+            },
+            "menu": {
+                "src": "CustomMenu"
+            },
+            "services": [
+                {
+                    "name": "aws_billing",
+                    "title": "Billing",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_billing_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "aws_account", "aws_iam_role", "bucket_name", "monthly_report_type", "detail_report_type"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["initial_scan_datetime", "sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["interval", "report_file_match_reg", "temp_folder"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "aws_account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_iam_role",
+                            "label": "Assume Role",
+                            "type": "singleSelect",
+                            "defaultValue": "",
+                            "options": {
+                                "referenceName": "iam_roles"
+                            }
+                        },
+                        {
+                            "field": "host_name",
+                            "label": "S3 Host Name",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "bucket_name",
+                            "label": "S3 Bucket",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "disableonEdit": true,
+                                "dependencies": ["aws_account", "aws_iam_role"],
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_s3buckets"
+                            }
+                        },
+                        {
+                            "field": "monthly_report_type",
+                            "label": "Monthly Report",
+                            "type": "singleSelect",
+                            "defaultValue": "Monthly cost allocation report",
+                            "options": {
+                                "disableonEdit": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "None",
+                                        "value": "None"
+                                    },
+                                    {
+                                        "label": "Monthly report",
+                                        "value": "Monthly report"
+                                    },
+                                    {
+                                        "label": "Monthly cost allocation report",
+                                        "value": "Monthly cost allocation report"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "detail_report_type",
+                            "label": "Detail Report",
+                            "type": "singleSelect",
+                            "defaultValue": "Detailed billing report with resources and tags",
+                            "options": {
+                                "disableonEdit": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "None",
+                                        "value": "None"
+                                    },
+                                    {
+                                        "label": "Detailed billing report",
+                                        "value": "Detailed billing report"
+                                    },
+                                    {
+                                        "label": "Detailed billing report with resources and tags",
+                                        "value": "Detailed billing report with resources and tags"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "report_file_match_reg",
+                            "label": "Regex for Report Selection",
+                            "tooltip": "A regular expression that the Splunk platform uses to match reports in AWS. This expression overrides values in the monthly_report_type and detail_report_type arguments.",
+                            "type": "text"
+                        },
+                        {
+                            "field": "temp_folder",
+                            "label": "Temp Folder",
+                            "tooltip": "Full path to a non-default folder with sufficient space for temporarily storing downloaded detailed billing report .zip files. ",
+                            "type": "text"
+                        },
+                        {
+                            "field": "recursion_depth",
+                            "label": "recursion_depth",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "monthly_timestamp_select_column_list",
+                            "label": "monthly_timestamp_select",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "detail_timestamp_select_column_list",
+                            "label": "detail_timestamp_select",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "time_format_list",
+                            "label": "time_format_list",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "max_file_size_csv_in_bytes",
+                            "label": "max_file_size_csv_in_bytes",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "max_file_size_csv_zip_in_bytes",
+                            "label": "max_file_size_csv_zip_in_bytes",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "header_look_up_max_lines",
+                            "label": "header_look_up_max_lines",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "header_magic_regex",
+                            "label": "header_magic_regex",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "monthly_real_timestamp_extraction",
+                            "label": "monthly_real_timestamp",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "monthly_real_timestamp_format_reg_list",
+                            "label": "monthly_real_timestamp_format",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "interval",
+                            "label": "Interval (in seconds)",
+                            "type": "text",
+                            "defaultValue": 86400,
+                            "validators": [{
+                                "type": "number",
+                                "range": [0, 31536000]
+                            }]
+                        },
+                        {
+                            "field": "initial_scan_datetime",
+                            "label": "Start Date/Time (UTC)",
+                            "type": "text",
+                            "options": {
+                                "disableonEdit": true,
+                                "placeholder": "e.g., 2000-01-01T00:00:00Z"
+                            },
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+                                    "errorMsg": "Please enter a correct date format. e.g., 2000-01-01T00:00:00Z"
+                                }
+                            ]
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "text",
+                            "defaultValue": "aws:billing"
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "aws_cloudtrail",
+                    "title": "CloudTrail",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_cloudtrail_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "aws_account", "aws_region", "sqs_queue"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["exclude_describe_events", "blacklist", "excluded_events_index", "interval"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "aws_account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "placeholder": "Select an account",
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_region",
+                            "label": "AWS Region",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_regions?aws_service=aws_cloudtrail",
+                                "labelField": "label",
+                                "dependencies": ["aws_account"]
+                            }
+                        },
+                        {
+                            "field": "sqs_queue",
+                            "label": "SQS Queue",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_sqs_queue_names",
+                                "labelField": "label",
+                                "dependencies": ["aws_account", "aws_region"]
+                            }
+                        },
+                        {
+                            "field": "remove_files_when_done",
+                            "label": "Remove Logs When Done",
+                            "type": "checkbox",
+                            "defaultValue": false,
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "exclude_describe_events",
+                            "label": "Exclude Read-only Events",
+                            "tooltip": "A boolean value indicating whether or not to exclude certain events, such as read-only events that can produce a high volume of data.",
+                            "type": "checkbox",
+                            "defaultValue": true
+                        },
+                        {
+                            "field": "blacklist",
+                            "label": "Blacklist for Exclusion",
+                            "tooltip": "A PCRE regular expression that specifies event names to if exclude_describe_events is set to true. Leave blank to use the default regex, ^(?:Describe|List|Get).",
+                            "type": "text"
+                        },
+                        {
+                            "field": "excluded_events_index",
+                            "label": "Excluded Events Index",
+                            "tooltip": "The name of the index in which the Splunk platform should put excluded events. Default is empty, which discards the events.",
+                            "type": "singleSelect",
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        },
+                        {
+                            "field": "interval",
+                            "label": "Interval (in seconds)",
+                            "type": "text",
+                            "defaultValue": 30,
+                            "validators": [{
+                                "type": "number",
+                                "range": [0, 31536000]
+                            }]
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "text",
+                            "defaultValue": "aws:cloudtrail"
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "aws_cloudwatch",
+                    "title": "CloudWatch",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_cloudwatch_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "aws_account", "aws_iam_role", "aws_region", "metric_namespace"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["polling_interval", "period"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "aws_account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_iam_role",
+                            "label": "Assume Role",
+                            "type": "singleSelect",
+                            "options": {
+                                "referenceName": "iam_roles"
+                            }
+                        },
+                        {
+                            "field": "aws_region",
+                            "label": "AWS Regions",
+                            "type": "multipleSelect",
+                            "required": true,
+                            "options": {
+                                "delimiter": ",",
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_regions?aws_service=aws_cloudwatch",
+                                "labelField": "label",
+                                "dependencies": ["aws_account"]
+                            }
+                        },
+                        {
+                            "field": "metric_namespace",
+                            "label": "Metric Namespaces",
+                            "type": "custom",
+                            "options": {
+                                "src": "MetricsConfigurationView"
+                            }
+                        },
+                        {
+                            "field": "metric_names",
+                            "label": "metric_names",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "metric_dimensions",
+                            "label": "metric_dimensions",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "statistics",
+                            "label": "statistics",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "polling_interval",
+                            "label": "Polling Interval (in seconds)",
+                            "type": "text",
+                            "defaultValue": "3600",
+                            "validators": [{
+                                "type": "number",
+                                "range": [60, 86400]
+                            }],
+                            "options": {
+                                "placeholder": "Input a number multiple of \"Granularity\" field."
+                            }
+                        },
+                        {
+                            "field": "period",
+                            "label": "Period",
+                            "tooltip": "The granularity, in seconds, of the returned data points. The period can be as short as one minute (60 seconds) and must be a multiple of 60",
+                            "type": "text",
+                            "defaultValue": "300",
+                            "validators": [{
+                                "type": "number",
+                                "range": [60, 86400]
+                            }]
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "text",
+                            "defaultValue": "aws:cloudwatch"
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "aws_cloudwatch_logs",
+                    "title": "CloudWatch Logs",
+                    "conf": "aws_cloudwatch_logs_tasks",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_cloudwatch_logs_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "account", "region", "groups"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["stream_matcher", "only_after", "sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["delay", "interval"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "region",
+                            "label": "AWS Region",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_regions?aws_service=aws_cloudwatch_logs",
+                                "labelField": "label",
+                                "dependencies": ["account"]
+                            }
+                        },
+                        {
+                            "field": "groups",
+                            "label": "Log Group",
+                            "tooltip": "A comma-separated list of log group names.",
+                            "type": "text",
+                            "required": true,
+                            "options": {
+                                "disableonEdit": true
+                            }
+                        },
+                        {
+                            "field": "delay",
+                            "label": "Delay",
+                            "type": "text",
+                            "defaultValue": 1800,
+                            "validators": [{
+                                "type": "number",
+                                "range": [0, 31536000]
+                            }],
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "only_after",
+                            "label": "Only After",
+                            "type": "text",
+                            "defaultValue": "1970-01-01T00:00:00",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$",
+                                    "errorMsg": "Please enter a correct date format. e.g., 1970-01-01T00:00:00"
+                                }
+                            ]
+                        },
+                        {
+                            "field": "stream_matcher",
+                            "label": "Stream Matching Regex",
+                            "tooltip": "REGEX to strictly match stream names. Defaults to .*",
+                            "type": "text",
+                            "defaultValue": ".*"
+                        },
+                        {
+                            "field": "interval",
+                            "label": "Interval (in seconds)",
+                            "type": "text",
+                            "defaultValue": 600,
+                            "validators": [{
+                                "type": "number",
+                                "range": [0, 31536000]
+                            }]
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "text",
+                            "defaultValue": "aws:cloudwatchlogs"
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "aws_config",
+                    "title": "Config",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_config_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "aws_account", "aws_region", "sqs_queue"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["polling_interval"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "aws_account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_region",
+                            "label": "AWS Region",
+                            "type": "custom",
+                            "options": {
+                                "src": "GroupSelection"
+                            }
+                        },
+                        {
+                            "field": "sqs_queue",
+                            "label": "SQS Queues",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "enable_additional_notifications",
+                            "label": "additional_notifications",
+                            "type": "text",
+                            "defaultValue": false,
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "polling_interval",
+                            "label": "Polling Interval (in seconds)",
+                            "type": "text",
+                            "defaultValue": 30,
+                            "validators": [{
+                                "type": "number",
+                                "range": [0, 31536000]
+                            }]
+                        },
+                        {
+                            "field": "interval",
+                            "label": "Interval (in seconds)",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "text",
+                            "defaultValue": "aws:config"
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "aws_config_rule",
+                    "title": "Config Rules",
+                    "conf": "aws_config_rule_tasks",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_config_rule_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "account", "aws_iam_role", "region"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["polling_interval"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_iam_role",
+                            "label": "Assume Role",
+                            "type": "singleSelect",
+                            "defaultValue": "",
+                            "options": {
+                                "referenceName": "iam_roles"
+                            }
+                        },
+                        {
+                            "field": "region",
+                            "label": "AWS Region",
+                            "type": "custom",
+                            "required": true,
+                            "options": {
+                                "src": "GroupSelection"
+                            }
+                        },
+                        {
+                            "field": "rule_names",
+                            "label": "Rule Names",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "polling_interval",
+                            "label": "Polling Interval (in seconds)",
+                            "type": "text",
+                            "defaultValue": 300,
+                            "validators": [{
+                                "type": "number",
+                                "range": [0, 31536000]
+                            }]
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "text",
+                            "defaultValue": "aws:config:rule"
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "aws_description",
+                    "title": "Description",
+                    "conf": "aws_description_tasks",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_description_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "account", "aws_iam_role", "regions", "apis"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["sourcetype", "index"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_iam_role",
+                            "label": "Assume Role",
+                            "type": "singleSelect",
+                            "options": {
+                                "referenceName": "iam_roles"
+                            }
+                        },
+                        {
+                            "field": "regions",
+                            "label": "AWS Regions",
+                            "type": "multipleSelect",
+                            "required": true,
+                            "options": {
+                                "delimiter": ",",
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_regions?aws_service=aws_description",
+                                "labelField": "label",
+                                "dependencies": ["account"]
+                            }
+                        },
+                        {
+                            "field": "apis",
+                            "label": "APIs/Interval (in seconds)",
+                            "type": "custom",
+                            "options": {
+                                "src": "DescriptionAPI"
+                            }
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "text",
+                            "defaultValue": "aws:description"
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "aws_s3",
+                    "title": "Generic S3",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_s3_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "aws_account", "aws_iam_role", "bucket_name", "key_name", "detail_report_type"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["initial_scan_datetime", "terminal_scan_datetime", "sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["ct_blacklist", "blacklist", "whitelist", "polling_interval"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "aws_account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_iam_role",
+                            "label": "Assume Role",
+                            "type": "singleSelect",
+                            "defaultValue": "",
+                            "options": {
+                                "referenceName": "iam_roles"
+                            }
+                        },
+                        {
+                            "field": "host_name",
+                            "label": "S3 Host Name",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "bucket_name",
+                            "label": "S3 Bucket",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "disableonEdit": true,
+                                "dependencies": ["aws_account", "aws_iam_role"],
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_s3buckets"
+                            }
+                        },
+                        {
+                            "field": "polling_interval",
+                            "label": "Polling Interval (in seconds)",
+                            "type": "text",
+                            "defaultValue": 1800,
+                            "validators": [{
+                                "type": "number",
+                                "range": [0, 31536000]
+                            }]
+                        },
+                        {
+                            "field": "key_name",
+                            "label": "S3 Key Prefix",
+                            "type": "text",
+                            "options": {
+                                "disableonEdit": true
+                            }
+                        },
+                        {
+                            "field": "initial_scan_datetime",
+                            "label": "Start Date/Time",
+                            "type": "text",
+                            "options": {
+                                "disableonEdit": true,
+                                "placeholder": "e.g., 2000-01-01T00:00:00Z"
+                            },
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+                                    "errorMsg": "Please enter a correct date format. e.g., 2000-01-01T00:00:00Z"
+                                }
+                            ]
+                        },
+                        {
+                            "field": "terminal_scan_datetime",
+                            "label": "End Date/Time",
+                            "type": "text",
+                            "defaultValue": "",
+                            "options": {
+                                "placeholder": "e.g., 2000-01-01T00:00:00Z"
+                            },
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+                                    "errorMsg": "Please enter a correct date format. e.g., 2000-01-01T00:00:00Z"
+                                }
+                            ]
+                        },
+                        {
+                            "field": "ct_blacklist",
+                            "label": "CloudTrail Event Blacklist",
+                            "tooltip": "A PCRE regular expression that specifies event names to exclude. The default regex is ^$ to exclude events that can produce a high volume of data. Leave it blank if you want all data to be indexed.",
+                            "type": "text",
+                            "defaultValue": "^$"
+                        },
+                        {
+                            "field": "blacklist",
+                            "label": "Blacklist",
+                            "tooltip": "A regular expression to indicate the S3 paths that the Splunk platform should exclude from scanning. Regex should match the full path.",
+                            "type": "text"
+                        },
+                        {
+                            "field": "whitelist",
+                            "label": "Whitelist",
+                            "tooltip": "A regular expression to indicate the S3 paths the Splunk platform should scan. Regex should match the full path. Whitelist overrides blacklist.",
+                            "type": "text"
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "singleSelect",
+                            "defaultValue": "aws:s3",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "aws:s3",
+                                        "value": "aws:s3"
+                                    },
+                                    {
+                                        "label": "aws:cloudtrail",
+                                        "value": "aws:cloudtrail"
+                                    },
+                                    {
+                                        "label": "aws:s3:accesslogs",
+                                        "value": "aws:s3:accesslogs"
+                                    },
+                                    {
+                                        "label": "aws:cloudfront:accesslogs",
+                                        "value": "aws:cloudfront:accesslogs"
+                                    },
+                                    {
+                                        "label": "aws:elb:accesslogs",
+                                        "value": "aws:elb:accesslogs"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        },
+                        {
+                            "field": "ct_excluded_events_index",
+                            "label": "ct_excluded_events_index",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "max_retries",
+                            "label": "max_retries",
+                            "type": "text",
+                            "defaultValue": 3,
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "recursion_depth",
+                            "label": "recursion_depth",
+                            "type": "text",
+                            "defaultValue": -1,
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "max_items",
+                            "label": "max_items",
+                            "type": "text",
+                            "defaultValue": 100000,
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "character_set",
+                            "label": "character_set",
+                            "type": "text",
+                            "defaultValue": "auto",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "is_secure",
+                            "label": "is_secure",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "splunk_ta_aws_logs",
+                    "title": "Incremental S3",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_logs_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "aws_account", "aws_iam_role", "bucket_name", "log_file_prefix"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["log_type", "log_start_date", "sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["interval"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "aws_account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_iam_role",
+                            "label": "Assume Role",
+                            "type": "singleSelect",
+                            "defaultValue": "",
+                            "options": {
+                                "referenceName": "iam_roles"
+                            }
+                        },
+                        {
+                            "field": "host_name",
+                            "label": "S3 Host Name",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "bucket_name",
+                            "label": "S3 Bucket",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "disableonEdit": true,
+                                "dependencies": ["aws_account", "aws_iam_role"],
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_s3buckets"
+                            }
+                        },
+                        {
+                            "field": "interval",
+                            "label": "Interval (in seconds)",
+                            "type": "text",
+                            "defaultValue": 1800,
+                            "validators": [{
+                                "type": "number",
+                                "range": [0, 31536000]
+                            }]
+                        },
+                        {
+                            "field": "log_type",
+                            "label": "Log Type",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "disableonEdit": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "CloudTrail Logs",
+                                        "value": "cloudtrail"
+                                    },
+                                    {
+                                        "label": "S3 Access Logs",
+                                        "value": "s3:accesslogs"
+                                    },
+                                    {
+                                        "label": "CloudFront Access Logs",
+                                        "value": "cloudfront:accesslogs"
+                                    },
+                                    {
+                                        "label": "ELB Access Logs",
+                                        "value": "elb:accesslogs"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "log_file_prefix",
+                            "label": "Log File Prefix",
+                            "tooltip": "Configure the prefix of the log file. This add-on will search the log files under this prefix. The locations of the log files are different for each S3 incremental log type.",
+                            "help": "<a class=\"external\" target=\"_blank\" href=\"/help?location=[AddOns:released]aws.configure_aws.configure_sqs\">Learn More</a>",
+                            "type": "text",
+                            "options": {
+                                "disableonEdit": true
+                            }
+                        },
+                        {
+                            "field": "log_start_date",
+                            "label": "Log Start Date",
+                            "type": "custom",
+                            "options": {
+                                "disableonEdit": true,
+                                "src": "IncrementalLogSettingsView"
+                            },
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                    "errorMsg": "Please enter a correct date format. e.g., 2000-01-01"
+                                }
+                            ]
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "text",
+                            "defaultValue": "aws:s3"
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        },
+                        {
+                            "field": "bucket_region",
+                            "label": "bucket_region",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "log_name_format",
+                            "label": "log_name_format",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "max_fails",
+                            "label": "max_fails",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "max_number_of_process",
+                            "label": "max_number_of_process",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "max_number_of_thread",
+                            "label": "max_number_of_thread",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "max_retries",
+                            "label": "max_retries",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "aws_inspector",
+                    "title": "Inspector",
+                    "conf": "aws_inspector_tasks",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_inspector_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "account", "aws_iam_role", "regions"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["polling_interval"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_iam_role",
+                            "label": "Assume Role",
+                            "type": "singleSelect",
+                            "defaultValue": "",
+                            "options": {
+                                "referenceName": "iam_roles"
+                            }
+                        },
+                        {
+                            "field": "regions",
+                            "label": "AWS Regions",
+                            "type": "multipleSelect",
+                            "required": true,
+                            "options": {
+                                "delimiter": ",",
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_regions?aws_service=aws_inspector",
+                                "labelField": "label",
+                                "dependencies": ["account"]
+                            }
+                        },
+                        {
+                            "field": "polling_interval",
+                            "label": "Polling Interval (in seconds)",
+                            "type": "text",
+                            "defaultValue": 300,
+                            "required": true,
+                            "validators": [{
+                                "type": "number",
+                                "range": [0, 31536000]
+                            }]
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "text",
+                            "defaultValue": "aws:inspector",
+                            "required": true
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "aws_kinesis",
+                    "title": "Kinesis",
+                    "conf": "aws_kinesis_tasks",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_kinesis_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "account", "aws_iam_role", "region", "stream_names"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["format", "encoding", "sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["init_stream_position"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_iam_role",
+                            "label": "Assume Role",
+                            "type": "singleSelect",
+                            "options": {
+                                "referenceName": "iam_roles"
+                            }
+                        },
+                        {
+                            "field": "region",
+                            "label": "AWS Region",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "disableonEdit": true,
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_regions?aws_service=aws_kinesis",
+                                "labelField": "label",
+                                "dependencies": ["account"]
+                            }
+                        },
+                        {
+                            "field": "stream_names",
+                            "label": "Stream Name",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "disableonEdit": true,
+                                "dependencies": ["account", "aws_iam_role", "region"],
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_kinesis_streams"
+                            }
+                        },
+                        {
+                            "field": "init_stream_position",
+                            "label": "Initial Stream Position",
+                            "tooltip": "LATEST or TRIM_HORIZON. LATEST starts data collection from the point the input is enabled. TRIM_HORIZON starts collecting with the oldest data record.",
+                            "type": "singleSelect",
+                            "defaultValue": "LATEST",
+                            "options": {
+                                "disableonEdit": true,
+                                "createSearchChoice": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "TRIM_HORIZON",
+                                        "value": "TRIM_HORIZON"
+                                    },
+                                    {
+                                        "label": "LATEST",
+                                        "value": "LATEST"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "encoding",
+                            "label": "Encoding",
+                            "tooltip": "The encoding of the stream data. Set to gzip or leave blank, which defaults to Base64. All stream data that you collect in a single input must have the same encoding.",
+                            "type": "singleSelect",
+                            "defaultValue": "",
+                            "options": {
+                                "disableonEdit": true,
+                                "createSearchChoice": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "(none)",
+                                        "value": ""
+                                    },
+                                    {
+                                        "label": "gzip",
+                                        "value": "gzip"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "format",
+                            "label": "Record Format",
+                            "tooltip": "CloudWatchLogs or none. If you choose CloudWatchLogs, this add-on will parse the data in CloudWatchLogs format.",
+                            "type": "singleSelect",
+                            "defaultValue": "",
+                            "options": {
+                                "disableonEdit": true,
+                                "createSearchChoice": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "(none)",
+                                        "value": ""
+                                    },
+                                    {
+                                        "label": "CloudWatchLogs",
+                                        "value": "CloudWatchLogs"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "singleSelect",
+                            "defaultValue": "aws:kinesis",
+                            "options": {
+                                "createSearchChoice": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "aws:kinesis",
+                                        "value": "aws:kinesis"
+                                    },
+                                    {
+                                        "label": "aws:cloudwatchlogs:vpcflow",
+                                        "value": "aws:cloudwatchlogs:vpcflow"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "splunk_ta_aws_sqs",
+                    "title": "SQS",
+                    "conf": "aws_sqs_tasks",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_sqs_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "aws_account", "aws_iam_role", "aws_region", "sqs_queues"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["format", "encoding", "sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["interval"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "aws_account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_iam_role",
+                            "label": "Assume Role",
+                            "type": "singleSelect",
+                            "defaultValue": "",
+                            "options": {
+                                "referenceName": "iam_roles"
+                            }
+                        },
+                        {
+                            "field": "aws_region",
+                            "label": "AWS Region",
+                            "type": "custom",
+                            "options": {
+                                "src": "GroupSelection"
+                            }
+                        },
+                        {
+                            "field": "sqs_queues",
+                            "label": "SQS Queues",
+                            "type": "text",
+                            "options": {
+                                "display": false
+                            }
+                        },
+                        {
+                            "field": "interval",
+                            "label": "Interval (in seconds)",
+                            "type": "text",
+                            "defaultValue": 30,
+                            "required": true,
+                            "validators": [{
+                                "type": "number",
+                                "range": [0, 31536000]
+                            }]
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "text",
+                            "defaultValue": "aws:sqs",
+                            "required": true
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "aws_sqs_based_s3",
+                    "title": "SQS-Based S3",
+                    "style": "page",
+                    "hook": {
+                        "src": "Hook"
+                    },
+                    "restHandlerName": "aws_sqs_based_s3_inputs_rh",
+                    "groups": [
+                        {
+                            "label": "AWS Input Configuration",
+                            "fields": ["name", "aws_account", "aws_iam_role", "sqs_queue_region", "sqs_queue_url", "sqs_batch_size", "s3_file_decoder"]
+                        },
+                        {
+                            "label": "Splunk-related Configuration",
+                            "fields": ["sourcetype", "index"]
+                        },
+                        {
+                            "label": "Advanced Settings",
+                            "options": {
+                                "expand": false,
+                                "isExpandable": true
+                            },
+                            "fields": ["interval"]
+                        }
+                    ],
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Name",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "aws_account",
+                            "label": "AWS Account",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "referenceName": "aws_account"
+                            }
+                        },
+                        {
+                            "field": "aws_iam_role",
+                            "label": "Assume Role",
+                            "type": "singleSelect",
+                            "options": {
+                                "referenceName": "iam_roles"
+                            }
+                        },
+                        {
+                            "field": "sqs_queue_region",
+                            "label": "AWS Region",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "endpointUrl": "splunk_ta_aws/splunk_ta_aws_regions?aws_service=aws_sqs_based_s3",
+                                "labelField": "label",
+                                "dependencies": ["aws_account"]
+                            }
+                        },
+                        {
+                            "field": "sqs_queue_url",
+                            "label": "SQS Queue Name",
+                            "type": "custom",
+                            "required": true,
+                            "tooltip": "SQS queue with dead letter queue setting (required) and visibility timeout no smaller than 300s (recommended)",
+                            "options": {
+                                "src": "SQSQueueSelector"
+                            }
+                        },
+                        {
+                            "field": "sqs_batch_size",
+                            "label": "SQS Batch Size",
+                            "type": "text",
+                            "defaultValue": "10",
+                            "tooltip": "Max number of messages to pull from SQS in one batch. An integer in range [1, 10].",
+                            "validators": [
+                                {
+                                    "type": "number",
+                                    "range": [1, 10]
+                                }
+                            ]
+                        },
+                        {
+                            "field": "s3_file_decoder",
+                            "label": "S3 File Decoder",
+                            "type": "singleSelect",
+                            "required": true,
+                            "options": {
+                                "disableonEdit": true,
+                                "createSearchChoice": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "Config",
+                                        "value": "Config"
+                                    },
+                                    {
+                                        "label": "CloudTrail",
+                                        "value": "CloudTrail"
+                                    },
+                                    {
+                                        "label": "S3 Access Logs",
+                                        "value": "S3AccessLogs"
+                                    },
+                                    {
+                                        "label": "CloudFront Access Logs",
+                                        "value": "CloudFrontAccessLogs"
+                                    },
+                                    {
+                                        "label": "ELB Access Logs",
+                                        "value": "ELBAccessLogs"
+                                    },
+                                    {
+                                        "label": "Custom Logs",
+                                        "value": "CustomLogs"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "sourcetype",
+                            "label": "Source Type",
+                            "type": "text",
+                            "required": true
+                        },
+                        {
+                            "field": "index",
+                            "label": "Index",
+                            "type": "singleSelect",
+                            "defaultValue": "default",
+                            "required": true,
+                            "options": {
+                                "createSearchChoice": true,
+                                "endpointUrl": "data/indexes",
+                                "blackList": "^_.*$"
+                            }
+                        },
+                        {
+                            "field": "interval",
+                            "label": "Interval (in seconds)",
+                            "type": "text",
+                            "defaultValue": "300",
+                            "validators": [{
+                                "type": "number",
+                                "range": [0, 31536000]
+                            }]
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

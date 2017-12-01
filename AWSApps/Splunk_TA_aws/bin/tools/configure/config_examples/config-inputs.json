@@ -1,0 +1,16 @@
+[
+    {
+        "stanzas": [
+            {
+                "aws_account": "aws-account-0",
+                "aws_region": "us-east-1",
+                "polling_interval": "30",
+                "name": "config-01",
+                "sourcetype": "aws:config",
+                "sqs_queue": "Test-Stream",
+                "index": "default",
+                "enable_additional_notifications": "0"
+            }
+        ]
+    }
+]

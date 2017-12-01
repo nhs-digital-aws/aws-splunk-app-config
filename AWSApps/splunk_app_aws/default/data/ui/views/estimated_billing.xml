@@ -1,0 +1,348 @@
+<form script="estimated_billing.js">
+    <label>Current Month Estimated Billing</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="billingAccountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <default>*</default>
+            <fieldForValue>LinkedAccountId</fieldForValue>
+            <fieldForLabel>Account</fieldForLabel>
+            <search id="billingAccountIdSearch">
+                <query>
+                    <![CDATA[
+                        `aws-cloudwatch-billing("*", "*")`
+                        | stats count by LinkedAccountId
+                        | `aws-accountid-to-name`
+                    ]]>
+                </query>
+                <earliest>-mon</earliest>
+                <latest>now</latest>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>LinkedAccountId="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="currency" searchWhenChanged="true">
+            <label>Currency</label>
+            <selectFirstChoice>true</selectFirstChoice>
+            <fieldForValue>Currency</fieldForValue>
+            <fieldForLabel>Currency</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[
+                        `aws-cloudwatch-billing($billingAccountId$, "*")`
+                        | `aws-cloudwatch-dimension-rex("Currency", "Currency")`
+                        | dedup Currency
+                        | eval CurrencyCode1=if(Currency=="USD", "AAA", Currency ) | sort CurrencyCode1 | table Currency
+                    ]]>
+                </query>
+                <earliest>-mon</earliest>
+                <latest>now</latest>
+            </search>
+        </input>
+    </fieldset>
+
+    <search id="baseBillingSearch">
+        <query>
+            <![CDATA[
+                `aws-cloudwatch-billing($billingAccountId$, $currency$)`
+                | stats sum(Sum) as sum by _time LinkedAccountId metric_dimensions
+                | `aws-cloudwatch-dimension-rex("ServiceName", "Service")`
+                | eval day=strftime(_time, "%Y/%m/%d")
+                | dedup day LinkedAccountId Service sortby -_time
+                | `aws-accountid-to-name`
+            ]]>
+        </query>
+        <earliest>@mon</earliest>
+        <latest>now</latest>
+    </search>
+
+    <search id="baseCurrentSearch" base="baseBillingSearch">
+        <query>
+            <![CDATA[
+                dedup LinkedAccountId metric_dimensions
+            ]]>
+        </query>
+    </search>
+
+    <row>
+        <panel>
+            <single>
+                <title>Estimated Cost - Month to Date</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            timechart span=1d sum(sum) by LinkedAccountId
+                            | addtotals
+                            | search Total!=""
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">Total</option>
+                <option name="underLabel">$currency|currency2Symbol$</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Total Projected Cost - This Month</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            timechart span=1d sum(sum) as sum
+                            | search sum=*
+                            | predict sum future_timespan=31
+                            | eval nowstring=strftime(now(), "%Y-%m")
+                            | eval yearmonth=strftime(_time,"%Y-%m")
+                            | where yearmonth=nowstring
+                            | sort 1 -_time
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">prediction(sum)</option>
+                <option name="underLabel">$currency|currency2Symbol$</option>
+            </single>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Estimated Cost by Account</title>
+                <search base="baseCurrentSearch">
+                    <query>
+                        <![CDATA[
+                            stats sum(sum) as Cost by Account
+                            | table Account Cost
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Estimated Cost by Service</title>
+                <search base="baseCurrentSearch">
+                    <query>
+                        <![CDATA[
+                            stats sum(sum) as Cost by Service
+                            | where Cost > 0
+                            | table Service Cost
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Month over Month Comparison - Daily Cost</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-billing($billingAccountId$, $currency$)`
+                            | stats sum(Sum) as sum by _time LinkedAccountId
+                            | eval day=strftime(_time, "%Y/%m/%d")
+                            | dedup day LinkedAccountId sortby -_time
+                            | timechart span=1d sum(sum) as "This Month"
+                            | appendcols [ search earliest=-mon@mon latest=-mon `aws-cloudwatch-billing($billingAccountId$, $currency$)`
+                            | stats sum(Sum) as sum by _time LinkedAccountId
+                            | eval day=strftime(_time, "%Y/%m/%d")
+                            | dedup day LinkedAccountId sortby -_time
+                            | timechart span=1d sum(sum) as "Last Month"]
+                            | fields _time "Last Month" "This Month"
+                        ]]>
+                    </query>
+                    <earliest>@mon</earliest>
+                    <latest>now</latest>
+                </search>
+                <option name="charting.chart">column</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">bottom</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Cost Projection Over Time</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            timechart span=1d sum(sum) as sum
+                            | search sum=*
+                            | predict sum as "Cost Projection" future_timespan=31
+                            | rename sum as "Estimated Cost"
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY.text">Cost</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">false</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">bottom</option>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+            </chart>
+        </panel>
+        <panel>
+            <table>
+                <title>Estimated Cost by Account and Service - Month to Date</title>
+                <search base="baseCurrentSearch">
+                    <query>
+                        <![CDATA[
+                            table LinkedAccountId, Service, sum, Account
+                            | sort - sum
+                            | where sum != 0
+                            | eventstats sum(sum) as total
+                            | eval Percentage=tostring(round(100*sum/total, 2))+"%"
+                            | rename sum as "Cost"
+                            | fieldformat Cost="$currency|currency2Symbol$".round(Cost, 0)
+                        ]]>
+                    </query>
+                </search>
+                <fields>Account Service Cost Percentage</fields>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="drilldown">row</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="count">10</option>
+                <option name="cell.percentage">Percentage</option>
+                <drilldown>
+                    <set token="detailed.accountId">$row.LinkedAccountId$</set>
+                    <set token="detailed.accountLabel">$row.Account$</set>
+                    <set token="detailed.service">$row.Service$</set>
+                </drilldown>
+            </table>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart depends="$detailed.accountId$">
+                <title>Cost Projection Over Time for $detailed.service$ in Account $detailed.accountLabel$</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            search LinkedAccountId="$detailed.accountId$" metric_dimensions="*$detailed.service$*"
+                            | timechart span=1d sum(sum) as sum
+                            | search sum=*
+                            | predict sum as "Cost Projection" future_timespan=31
+                            | rename sum as "Estimated Cost"
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY.text">Cost</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">false</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart depends="$detailed.accountId$">
+                <title>Daily Cost for $detailed.service$ in Account $detailed.accountLabel$</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            search LinkedAccountId="$detailed.accountId$" metric_dimensions="*$detailed.service$*"
+                            | timechart span=1d sum(sum) as sum
+                            | delta sum as Cost
+                            | eval Cost=if(Cost!="*", Cost, sum)
+                            | fields - sum
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY.text">Daily Cost</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">false</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+            </chart>
+        </panel>
+    </row>
+</form>

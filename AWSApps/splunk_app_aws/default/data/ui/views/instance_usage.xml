@@ -1,0 +1,498 @@
+<form script="base_page.js">
+    <label>EC2 Instances</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input id="awstags" token="tags">
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+
+    <search id="baseInstanceSearch">
+        <query>
+            <![CDATA[
+                `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                | `aws-ec2-description`
+                | `aws-ec2-info`
+                | stats values(run_instance_info) as run_instance_info, sum(spot) as spot by aws_account_id, region, platform, tenancy, family
+                | eval RI_info = ""
+                | join type=left aws_account_id, region, platform, tenancy, family
+                [search earliest=-1d `aws-description-resource($accountId$, $region$, "ec2_reserved_instances")` $tags|tag2description$
+                | `aws-ri-info`]
+                | eval total_hours=1
+                | calculateri
+            ]]>
+        </query>
+        <earliest>-1d</earliest>
+        <latest>now</latest>
+    </search>
+
+    <search id="baseReservedInstanceSearch">
+        <query>
+            <![CDATA[
+                `aws-description-resource($accountId$, $region$, "ec2_reserved_instances")` $tags|tag2description$
+                | `aws-ri-info`
+                | eval run_instance_info=""
+                | join type=left aws_account_id, region, platform, tenancy, family
+                 [search earliest=-1d `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                | `aws-ec2-description`
+                | `aws-ec2-info`
+                | stats values(run_instance_info) as run_instance_info by aws_account_id, region, platform, tenancy, family]
+                | eval total_hours=1
+                | calculateri
+                | table aws_account_id, region, platform, tenancy, family, RI_units_purchased, RI_units_used
+            ]]>
+        </query>
+        <earliest>-1d</earliest>
+        <latest>now</latest>
+    </search>
+
+    <search id="baseCPUSearch">
+        <query>
+            <![CDATA[
+                `aws-cloudwatch-ec2($accountId$, $region$)` metric_name=CPUUtilization
+                | stats avg(Average) as ave_cpu by metric_dimensions
+                | eval ave_cpu=round(ave_cpu, 2)
+            ]]>
+        </query>
+    </search>
+
+    <search id="baseInstanceStateSearch">
+        <query>
+            <![CDATA[
+                `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                | stats count(id) as count by state
+                | eventstats sum(count) as total
+            ]]>
+        </query>
+        <earliest>-1d</earliest>
+        <latest>now</latest>
+    </search>
+    <row>
+        <panel>
+            <single>
+                <title>Running Instances</title>
+                <search base="baseInstanceStateSearch">
+                    <query>
+                        <![CDATA[
+                             where state="running"
+                            | nadefault count total
+                            | eval _total_name="instances", _total_field=total
+                        ]]>
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                            | where state="running"
+                            |table id,placement,instance_type,key_name,vpc_id,launch_time,state
+                            &earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Stopped Instances</title>
+                <search base="baseInstanceStateSearch">
+                    <query>
+                        <![CDATA[
+                             where state!="running"
+                            | nadefault count total
+                            | eval _total_name="instances", _total_field=total
+                        ]]>
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                            | where state!="running"
+                            |table id,placement,instance_type,key_name,vpc_id,launch_time,state
+                             &earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Reserved Instances Utilization in Units (Estimated)</title>
+                <search base="baseReservedInstanceSearch">
+                    <query>
+                        stats sum(RI_units_purchased) as total sum(RI_units_used) as used
+                        | eval utilization = round(used/ total*100, 2)
+                    </query>
+                </search>
+                <option name="unit">%</option>
+                <option name="numberPrecision">0.00</option>
+                <option name="field">utilization</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?latest=now&earliest=-1d&q=search `aws-description-resource($accountId$, $region$, "ec2_reserved_instances")` $tags|tag2description$
+                            | `aws-ri-info`
+                            | eval run_instance_info=""
+                            | join type=left aws_account_id, region, platform, tenancy, family
+                            [search earliest=-1d `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                            | `aws-ec2-description`
+                            | `aws-ec2-info`
+                            | stats values(run_instance_info) as run_instance_info by aws_account_id, region, platform, tenancy, family]
+                            | eval total_hours=1
+                            | calculateri
+                            | table aws_account_id, region, platform, tenancy, family, RI_units_purchased, RI_units_used
+                            | rename RI_units_purchased as "RI Units Purchased", RI_units_used as "RI Units Used"
+                        ]]>
+                    </link>
+                </drilldown>
+            </single>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <chart>
+                <title>Running Instances by Purchase Option</title>
+                <search base="baseInstanceSearch">
+                    <query>
+                     <![CDATA[
+                            stats sum(instance_hours_covered) as Reserved, sum(instance_hours_purchased) as total, sum(spot) as "Spot"
+                            | eval "On-Demand" = round(total - Reserved,2) | fields - total
+                            | transpose | rename "row 1" as count | where count > 0
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Running Instances by Region</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                            | where state="running"
+                            | stats count(id) as count by region
+                            | lookup regions region OUTPUT label as Region
+                            | fields Region,count
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                            | where state="running"
+                            | lookup regions region OUTPUT label as Region
+                            | search Region="$click.value$"&latest=$latest$&earliest=$earliest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Running Instances by Type</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                            | where state="running"
+                            | stats count(id) as count by instance_type
+                            | fields instance_type,count
+                            | rename instance_type as "Instance Type"
+                            | sort -count
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <option name="charting.chart">bar</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">visible</option>
+                <option name="charting.axisTitleY.visibility">collapsed</option>
+                <option name="charting.axisTitleX.text">Instance Type</option>
+                <option name="charting.axisTitleY.text">Count</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">false</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">none</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <table>
+                <title>Spot Instances Details</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                            | where spot_instance_request_id!="null"
+                            | table id, tags.Name, spot_instance_request_id, placement, instance_type, key_name, launch_time, state
+                            | fillnull value=N/A
+                            | rename id as ID, tags.Name as "Name", spot_instance_request_id as "Request Id", placement as "Availability Zone", instance_type as Type, key_name as "Key Pair", launch_time as "Launch Time", state as State
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <drilldown>
+                    <link>
+                        individual_instance_usage?form.instances=$row.ID$&amp;latest=$latest$&amp;earliest=$earliest$&amp;form.accountId=$form.accountId$&amp;regions=$form.region$
+                    </link>
+                </drilldown>
+                <option name="count">10</option>
+                <option name="displayRowNumbers">true</option>
+            </table>
+        </panel>
+
+        <panel>
+            <chart>
+                <title>Reserved Instances Utilization in Units by Family (Estimated)</title>
+                <search base="baseReservedInstanceSearch">
+                    <query>
+                        <![CDATA[
+                            stats sum(RI_units_purchased) as total sum(RI_units_used) as used by family
+                            | eval "Unused units" = total - used | rename used as "In-Use units", family as "Family"
+                            | fields - total
+                        ]]>
+                    </query>
+                </search>
+                <option name="count">10</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">false</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">bar</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+                <option name="charting.fieldColors">{In-Use units:0x91AF27,Unused units:0xAA3977}</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Running Instances by Region Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-sourcetype` source="*:ec2_instances" $accountId$ $region$ state="running" $tags|tag2description$
+                            | lookup regions region OUTPUT label as region
+                            | timechart dc(id) minspan=1h by region
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY.text">Count</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">false</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">area</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Running Instances by Type Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-sourcetype` source="*:ec2_instances" $accountId$ $region$ state="running" $tags|tag2description$
+                            | timechart dc(id) minspan=1h by instance_type
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY.text">Count</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">false</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">area</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <title>High Utilization Instances</title>
+            <input type="dropdown" token="highThreshold" searchWhenChanged="true">
+                <label>CPU Utilization Threshold</label>
+                <default>90</default>
+                <choice value="95">95%</choice>
+                <choice value="90">90%</choice>
+                <choice value="85">85%</choice>
+                <choice value="80">80%</choice>
+            </input>
+            <table>
+                <search base="baseCPUSearch">
+                    <query>
+                        <![CDATA[
+                            where ave_cpu > $highThreshold$ | sort -num(ave_cpu)
+                            | `aws-cloudwatch-dimension-rex("InstanceId", "id")`
+                            | join type=inner id [search earliest=-1d `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                            | search state="running"]
+                            | table id, tags.Name, region, instance_type, ave_cpu
+                            | fillnull value=N/A
+                            | lookup regions region OUTPUT label as region
+                            | rename id as ID, tags.Name as Name, instance_type as Type, region as Region, ave_cpu as "Avg. CPU Util."
+                        ]]>
+                    </query>
+                </search>
+                <drilldown>
+                    <link>
+                        individual_instance_usage?form.instances=$row.ID$&amp;latest=$latest$&amp;earliest=$earliest$&amp;form.accountId=$form.accountId$&amp;regions=$form.region$
+                    </link>
+                </drilldown>
+                <option name="count">10</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">true</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+        <panel>
+            <title>Low Utilization Instances</title>
+            <input type="dropdown" token="lowThreshold" searchWhenChanged="true">
+                <label>CPU Utilization Threshold</label>
+                <default>10</default>
+                <choice value="1">1%</choice>
+                <choice value="5">5%</choice>
+                <choice value="10">10%</choice>
+                <choice value="20">20%</choice>
+            </input>
+            <table>
+                <search base="baseCPUSearch">
+                    <query>
+                        <![CDATA[
+                            where ave_cpu < $lowThreshold$ | sort num(ave_cpu)
+                            | `aws-cloudwatch-dimension-rex("InstanceId", "id")`
+                            | join type=inner id [search earliest=-1d `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                            | search state="running"]
+                            | table id, tags.Name, region, instance_type, ave_cpu
+                            | fillnull value=N/A
+                            | lookup regions region OUTPUT label as region
+                            | rename id as ID, tags.Name as Name, instance_type as Type, region as Region, ave_cpu as "Avg. CPU Util."
+                        ]]>
+                    </query>
+                </search>
+                <drilldown>
+                    <link>
+                        individual_instance_usage?form.instances=$row.ID$&amp;latest=$latest$&amp;earliest=$earliest$&amp;form.accountId=$form.accountId$&amp;regions=$form.region$
+                    </link>
+                </drilldown>
+                <option name="count">10</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">true</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+    </row>
+</form>

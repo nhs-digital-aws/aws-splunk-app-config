@@ -1,0 +1,431 @@
+<form script="base_page.js">
+    <label>S3 - Traffic Analysis</label>
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="bucket_names" searchWhenChanged="true">
+            <label>Bucket Names</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <fieldForLabel>bucket_name</fieldForLabel>
+            <fieldForValue>bucket_name</fieldForValue>
+            <allowCustomValues>true</allowCustomValues>
+            <search>
+                <query>
+                    <![CDATA[
+                        | aclinputlookup s3_buckets
+                        | search $accountId$ $region$
+                        | fields bucket_name
+                    ]]>
+                </query>
+                <earliest>-1d</earliest>
+                <latest>now</latest>
+            </search>
+            <prefix>(</prefix>
+            <suffix>)</suffix>
+            <valuePrefix>S3_Access_Log.bucket_name="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+
+    <search id="requestCountSearch">
+        <query>
+            <![CDATA[
+                | tstats dc(S3_Access_Log.request_id) as count FROM datamodel=S3_Access_Log where $bucket_names$ AND ($s3_datamodel_restrictions$) by S3_Access_Log.http_status S3_Access_Log.error_code S3_Access_Log.user_agent
+            ]]>
+        </query>
+    </search>
+
+    <row>
+        <panel>
+            <single>
+                <title>Total Requests</title>
+                <search base="requestCountSearch">
+                    <query>
+                        <![CDATA[
+                            stats sum(count) as count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="field">count</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Error Requests</title>
+                <search base="requestCountSearch">
+                    <query>
+                        <![CDATA[
+                            search S3_Access_Log.http_status>399
+                            | stats sum(count) as count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="field">count</option>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">none</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[0]</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Total Traffic</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats sum(S3_Access_Log.bytes_sent) as bytes_sent FROM datamodel=S3_Access_Log where S3_Access_Log.bytes_sent!="-" AND $bucket_names$ AND ($s3_datamodel_restrictions$)
+                            | eval bytes_sent = case(bytes_sent>1024*1024*1024, tostring(round(bytes_sent/1024/1024/1024,2))+" GB", bytes_sent>1024*1024, tostring(round(bytes_sent/1024/1024,2))+" MB", bytes_sent>1024, tostring(round(bytes_sent/1024,2))+" KB", true(), tostring(bytes_sent)+" B")
+                            | nadefault bytes_sent
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="field">bytes_sent</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Average Processing Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats avg(S3_Access_Log.total_time) as average_time FROM datamodel=S3_Access_Log where S3_Access_Log.total_time!="-" AND $bucket_names$ AND ($s3_datamodel_restrictions$)
+                            | eval average_time=tostring(round(average_time,2))+" ms"
+                            | nadefault average_time
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="field">average_time</option>
+            </single>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <map>
+                <title>Traffic Size by Location (Bytes)</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats sum(S3_Access_Log.bytes_sent) as bytes_sent FROM datamodel=S3_Access_Log where $bucket_names$ AND ($s3_datamodel_restrictions$) by S3_Access_Log.remote_ip S3_Access_Log.remote_ip_lat S3_Access_Log.remote_ip_lon
+                            | iplocation S3_Access_Log.remote_ip
+                            | eval location=if(City=="",Country,City+","+Country)
+                            | sort 100 - bytes_sent
+                            | geostats latfield=S3_Access_Log.remote_ip_lat longfield=S3_Access_Log.remote_ip_lon sum(bytes_sent) by location
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="mapping.choroplethLayer.colorBins">5</option>
+                <option name="mapping.choroplethLayer.colorMode">auto</option>
+                <option name="mapping.choroplethLayer.maximumColor">0xDB5800</option>
+                <option name="mapping.choroplethLayer.minimumColor">0x2F25BA</option>
+                <option name="mapping.choroplethLayer.neutralPoint">0</option>
+                <option name="mapping.choroplethLayer.shapeOpacity">0.75</option>
+                <option name="mapping.choroplethLayer.showBorder">1</option>
+                <option name="mapping.data.maxClusters">100</option>
+                <option name="mapping.drilldown">all</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+                <option name="mapping.map.panning">true</option>
+                <option name="mapping.map.scrollZoom">false</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="mapping.markerLayer.markerMaxSize">50</option>
+                <option name="mapping.markerLayer.markerMinSize">10</option>
+                <option name="mapping.markerLayer.markerOpacity">0.8</option>
+                <option name="mapping.showTiles">1</option>
+                <option name="mapping.tileLayer.maxZoom">7</option>
+                <option name="mapping.tileLayer.minZoom">0</option>
+                <option name="mapping.tileLayer.tileOpacity">1</option>
+                <option name="mapping.type">marker</option>
+                <option name="drilldown">all</option>
+                <option name="mapping.fieldColors">{REJECT:0xd93f3c,ACCEPT:0x65a637}</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="height">300</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+            </map>
+        </panel>
+        <panel>
+            <map>
+                <title>Request Count by Location</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(S3_Access_Log.request_id) as count FROM datamodel=S3_Access_Log where $bucket_names$ AND ($s3_datamodel_restrictions$) by S3_Access_Log.remote_ip S3_Access_Log.remote_ip_lat S3_Access_Log.remote_ip_lon
+                            | iplocation S3_Access_Log.remote_ip
+                            | eval location=if(City=="",Country,City+","+Country)
+                            | sort 100 - count
+                            | geostats latfield=S3_Access_Log.remote_ip_lat longfield=S3_Access_Log.remote_ip_lon sum(count) by location
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="mapping.choroplethLayer.colorBins">5</option>
+                <option name="mapping.choroplethLayer.colorMode">auto</option>
+                <option name="mapping.choroplethLayer.maximumColor">0xDB5800</option>
+                <option name="mapping.choroplethLayer.minimumColor">0x2F25BA</option>
+                <option name="mapping.choroplethLayer.neutralPoint">0</option>
+                <option name="mapping.choroplethLayer.shapeOpacity">0.75</option>
+                <option name="mapping.choroplethLayer.showBorder">1</option>
+                <option name="mapping.data.maxClusters">100</option>
+                <option name="mapping.drilldown">all</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+                <option name="mapping.map.panning">true</option>
+                <option name="mapping.map.scrollZoom">false</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="mapping.markerLayer.markerMaxSize">50</option>
+                <option name="mapping.markerLayer.markerMinSize">10</option>
+                <option name="mapping.markerLayer.markerOpacity">0.8</option>
+                <option name="mapping.showTiles">1</option>
+                <option name="mapping.tileLayer.maxZoom">7</option>
+                <option name="mapping.tileLayer.minZoom">0</option>
+                <option name="mapping.tileLayer.tileOpacity">1</option>
+                <option name="mapping.type">marker</option>
+                <option name="drilldown">all</option>
+                <option name="mapping.fieldColors">{REJECT:0xd93f3c,ACCEPT:0x65a637}</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="height">300</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+            </map>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <chart>
+                <title>HTTP Status</title>
+                <search base="requestCountSearch">
+                    <query>
+                        <![CDATA[
+                            stats sum(count) as count by S3_Access_Log.http_status
+                            | fields S3_Access_Log.http_status, count
+                            | rename S3_Access_Log.http_status AS "HTTP Status"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("s3")` http_status="$click.value$"&latest=$latest$&earliest=$earliest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>S3 Error Code</title>
+                <search base="requestCountSearch">
+                    <query>
+                        <![CDATA[
+                            search S3_Access_Log.error_code!="-"
+                            | stats sum(count) as count by S3_Access_Log.error_code
+                            | fields S3_Access_Log.error_code, count
+                            | rename S3_Access_Log.error_code AS "Error Code"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("s3")` error_code="$click.value$"&latest=$latest$&earliest=$earliest$
+                        ]]>
+                    </link>
+                </drilldown>
+            </chart>
+        </panel>
+        <panel>
+            <table>
+                <title>Top User Agents</title>
+                <search base="requestCountSearch">
+                    <query>
+                        <![CDATA[
+                            search user_agent!="-"
+                            | stats sum(count) as count by S3_Access_Log.user_agent
+                            | sort - count
+                            | eventstats sum(count) as total
+                            | eval percent=tostring(round(100*count/total, 2))+"%"
+                            | table S3_Access_Log.user_agent, count, percent
+                            | rename count as "Count", S3_Access_Log.user_agent as "User Agent", percent as "Percentage"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="count">5</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+                <option name="cell.percentage">Percentage</option>
+            </table>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table>
+                <title>Top Requests</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(S3_Access_Log.request_id) as count FROM datamodel=S3_Access_Log where $bucket_names$ AND ($s3_datamodel_restrictions$) by S3_Access_Log.request_uri
+                            | sort - count
+                            | rename S3_Access_Log.request_uri as request_uri
+                            | eval request_uri = mvindex(split(request_uri, " "), 1)
+                            | table request_uri, count
+                            | rename count as "Count", request_uri as "Request URI"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="count">5</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+        <panel>
+            <chart>
+                <title>Request Count Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(S3_Access_Log.request_id) as count FROM datamodel=S3_Access_Log where $bucket_names$ AND ($s3_datamodel_restrictions$) by S3_Access_Log.bucket_name _time span=1h
+                            | timechart sum(count) by S3_Access_Log.bucket_name
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">collapsed</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table>
+                <title>Top Error Requests</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(S3_Access_Log.request_id) as count FROM datamodel=S3_Access_Log where ((S3_Access_Log.http_status!="-" AND S3_Access_Log.http_status!=2*) OR S3_Access_Log.error_code!="-") AND $bucket_names$ AND ($s3_datamodel_restrictions$) by S3_Access_Log.request_uri S3_Access_Log.http_status S3_Access_Log.error_code
+                            | sort - count
+                            | rename S3_Access_Log.request_uri as request_uri
+                            | eval request_uri = mvindex(split(request_uri, " "), 1)
+                            | table request_uri, S3_Access_Log.http_status, S3_Access_Log.error_code, count
+                            | rename count as "Count", S3_Access_Log.http_status as "HTTP Status", S3_Access_Log.error_code as "Error Code", request_uri as "Request URI"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="count">5</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+        <panel>
+            <chart>
+                <title>Error Count Over Time</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats dc(S3_Access_Log.request_id) as count FROM datamodel=S3_Access_Log where ((S3_Access_Log.http_status!="-" AND S3_Access_Log.http_status!=2*) OR S3_Access_Log.error_code!="-") AND $bucket_names$ AND ($s3_datamodel_restrictions$) by S3_Access_Log.bucket_name _time span=1h
+                            | timechart sum(count) by S3_Access_Log.bucket_name
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">collapsed</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+</form>

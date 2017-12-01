@@ -1,0 +1,341 @@
+<form script="monthly_billing.js">
+    <label>Historical Monthly Bills</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="billingAccountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <default>*</default>
+            <fieldForValue>LinkedAccountId</fieldForValue>
+            <fieldForLabel>Account</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[
+                        `aws-billing-monthly-accounts` | `aws-accountid-to-name`
+                    ]]>
+                </query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>LinkedAccountId="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="dropdown" token="currency" searchWhenChanged="true">
+            <label>Currency</label>
+            <selectFirstChoice>true</selectFirstChoice>
+            <fieldForValue>CurrencyCode</fieldForValue>
+            <fieldForLabel>CurrencyCode</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[
+                        `aws-billing-monthly-accounts`
+                        | search $billingAccountId$
+                        | eval CurrencyCode1=if(CurrencyCode=="USD", "AAA", CurrencyCode)
+                        | sort CurrencyCode1
+                        | dedup CurrencyCode1
+                    ]]>
+                </query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+        </input>
+        <input id="awstags" token="tags">
+        </input>
+        <html>
+            <div id="timerange-from"></div>
+        </html>
+        <html>
+            <div id="timerange-to"></div>
+        </html>
+        <html>
+            <div id="oneTime"></div>
+        </html>
+    </fieldset>
+
+    <search id="baseSearch">
+        <query>
+            <![CDATA[
+                `aws-billing-monthly-item($billingAccountId$, $currency$, $monthSpl$)` $tags|tag2billing$
+                | stats count sum(TotalCost) as TotalCost by LinkedAccountId ProductName BillingPeriodEndDate InvoiceID
+                | eventstats sum(count) as count by InvoiceID
+                | eval TotalCost=round(TotalCost, 2)
+                | `aws-accountid-to-name`
+            ]]>
+        </query>
+    </search>
+
+    <search id="baseBillingSearch" base="baseSearch">
+        <query>
+            <![CDATA[
+                search $onetimeDetailedBilling$
+            ]]>
+        </query>
+    </search>
+
+    <search id="baseOnetimeSearch" base="baseSearch">
+        <query>
+            <![CDATA[
+                stats sum(count) as count sum(TotalCost) as TotalCost by LinkedAccountId InvoiceID
+            ]]>
+        </query>
+    </search>
+
+    <row>
+        <panel>
+            <single>
+                <title>Total Cost</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            stats sum(TotalCost) as "Total Cost"
+                            | nadefault "Total Cost"
+                        ]]>
+                    </query>
+                </search>
+                <option name="underLabel">$currency|currency2Symbol$</option>
+                <option name="field">Total Cost</option>
+            </single>
+            <single>
+                <title>Total Onetime Payments Cost</title>
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search count <= 2
+                            | stats sum(TotalCost) as "Total Cost"
+                            | nadefault "Total Cost"
+                        ]]>
+                    </query>
+                </search>
+                <drilldown>
+                    <set token="onetime">true</set>
+                </drilldown>
+                <option name="underLabel">$currency|currency2Symbol$</option>
+                <option name="field">Total Cost</option>
+            </single>
+            <table depends="$onetime$">
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            eval "Onetime Payment?"=if(count<=2, "Y", "N")
+                            | sort -"Onetime Payment?" -TotalCost
+                            | rename InvoiceID as "Invoice ID" TotalCost as "Total Cost"
+                            | fieldformat "Total Cost"="$currency|currency2Symbol$".tostring(round('Total Cost', 2),"commas")
+                            | table Account "Invoice ID" "Total Cost" "Onetime Payment?"
+                        ]]>
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-billing-monthly-item($billingAccountId$, $currency$, $monthSpl$)` InvoiceID="$row.Invoice ID$" $tags|tag2billing$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="drilldown">row</option>
+                <option name="count">10</option>
+            </table>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Cost by Account</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            stats sum(TotalCost) as "Total Cost" by Account
+                            | table Account "Total Cost"
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Cost by Service</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            stats sum(TotalCost) as TotalCost by ProductName
+                            | eval TotalCost=round(TotalCost,2)
+                            | rename TotalCost as "Total Cost" ProductName as Service
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>EC2 Cost by Instance Type</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-billing-monthly-item($billingAccountId$, $currency$, $monthSpl$)`
+                            | search UsageType="*Usage:*" ProductName="Amazon Elastic Compute Cloud" $tags|tag2billing$
+                            | rex field=UsageType ".*\:(?<instance_type>.*)"
+                            | stats sum(TotalCost) as cost by instance_type
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>EBS Cost by Usage Type</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-billing-monthly-item($billingAccountId$, $currency$, $monthSpl$)`
+                            | search UsageType="*EBS*" ProductName="Amazon Elastic Compute Cloud" $tags|tag2billing$
+                            | eval type=case(like(UsageType, "%VolumeUsage%"), "VolumeUsage", like(UsageType, "%VolumeIOUsage%"), "VolumeIOUsage", like(UsageType, "%SnapshotUsage%"), "SnapshotUsage", like(UsageType, "%VolumeP-IOPS%"), "VolumeP-IOPS")
+                            | stats sum(TotalCost) as cost by type
+                            | sort by -cost
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">pie</option>
+                <option name="drilldown">all</option>
+            </chart>
+        </panel>
+    </row>
+
+    <row>
+        <panel>
+            <chart>
+                <title>Month over Month Comparison</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            eval _time=strptime(BillingPeriodEndDate,"%Y/%m/%d")
+                            | timechart span=1mon sum(TotalCost) as "Total Cost" by Account limit=10
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.legend.placement">bottom</option>
+                <option name="charting.legend.masterLegend">null</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+            </chart>
+        </panel>
+        <panel>
+            <table>
+                <title>Cost by Account and Service</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            table Account ProductName TotalCost
+                            | sort -TotalCost
+                            | eventstats sum(TotalCost) as total
+                            | eval Percentage=tostring(round(100*TotalCost/total, 2))+"%"
+                            | rename ProductName as Service, TotalCost as "Total Cost"
+                            | fieldformat "Total Cost"="$currency|currency2Symbol$".tostring(round('Total Cost', 2),"commas")
+                            | table Account Service "Total Cost" Percentage
+                        ]]>
+                    </query>
+                </search>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="drilldown">row</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="count">10</option>
+                <option name="cell.percentage">Percentage</option>
+            </table>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <chart>
+                <title>Monthly Cost Trend by Service</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            eval _time=strptime(BillingPeriodEndDate,"%Y/%m/%d")
+                            | timechart span=1mon sum(TotalCost) as "Total Cost" by ProductName limit=10
+                            | rename ProductName as Service
+                        ]]>
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">collapsed</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+        <panel>
+            <table>
+                <title>Monthly Cost Change by Service</title>
+                <search base="baseBillingSearch">
+                    <query>
+                        <![CDATA[
+                            sort 0 + Account, ProductName, BillingPeriodEndDate
+                            | delta TotalCost as "CostChange" p=1
+                            | eval BillingPeriodEndTime=strptime(BillingPeriodEndDate,"%Y/%m/%d %H:%M:%S"), BillingPeriodEndDate=strftime(BillingPeriodEndTime, "%Y-%m")
+                            | delta BillingPeriodEndTime as "TimeDelta" p=1
+                            | search CostChange!=0 AND TimeDelta>0
+                            | table Account, ProductName, BillingPeriodEndDate, TotalCost, CostChange
+                            | rename ProductName as Service, BillingPeriodEndDate as "Month",TotalCost as "Total Cost", CostChange as "Cost Change"
+                            | fieldformat "Total Cost"="$currency|currency2Symbol$".tostring(round('Total Cost', 2),"commas")
+                            | fieldformat "Cost Change"="$currency|currency2Symbol$".tostring(round('Cost Change', 2),"commas")
+                        ]]>
+                    </query>
+                </search>
+                <option name="count">10</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+    </row>
+</form>

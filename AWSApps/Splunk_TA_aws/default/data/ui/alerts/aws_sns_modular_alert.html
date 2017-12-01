@@ -1,0 +1,80 @@
+<form class="form-horizontal form-complex">
+    <style>
+        .alert-save-as .trigger-actions .alert-actions-control-group .more-info .control-label, .alert-edit .trigger-actions .alert-actions-control-group .more-info .control-label{
+            width: 80px;
+            padding-right: 10px;
+        }
+    </style>
+
+    <div class="control-group">
+        <label class="control-label" for="aws_sns_modular_alert_account">Account <span class="required">*</span></label>
+        <div class="controls">
+            <input type="text" name="action.aws_sns_modular_alert.param.account" id="aws_sns_modular_alert_account" />
+            <span class="help-block">The account name configured in Splunk Add-on for AWS.</span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label" for="aws_sns_modular_alert_region">Region <span class="required">*</span></label>
+        <div class="controls">
+            <input type="text" name="action.aws_sns_modular_alert.param.region" id="aws_sns_modular_alert_region" />
+            <span class="help-block">The region of AWS SNS the events will be sent to.</span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label" for="aws_sns_modular_alert_topic_name">Topic Name <span class="required">*</span></label>
+        <div class="controls">
+            <input type="text" name="action.aws_sns_modular_alert.param.topic_name" id="aws_sns_modular_alert_topic_name" />
+            <span class="help-block">The name of the topic the events will be sent to.</span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label" for="aws_sns_modular_alert_correlation_id">Correlation ID</label>
+        <div class="controls">
+            <input type="text" name="action.aws_sns_modular_alert.param.correlation_id" id="aws_sns_modular_alert_correlation_id" value="$result.correlation_id$"/>
+            <span class="help-block">Correlation ID /Entity/Source/Source/Timestamp/Event: You can leave these fields as default setting or change it as you like. For more information of these fields, please refer to the documents for Splunk Add-on for AWS</span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label" for="aws_sns_modular_alert_entity">Entity</label>
+        <div class="controls">
+            <input type="text" name="action.aws_sns_modular_alert.param.entity" id="aws_sns_modular_alert_entity" value="$result.entity$" />
+            <span class="help-block"></span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label" for="aws_sns_modular_alert_source">Source</label>
+        <div class="controls">
+            <input type="text" name="action.aws_sns_modular_alert.param.source" id="aws_sns_modular_alert_source" value="$result.source$" />
+            <span class="help-block"></span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label" for="aws_sns_modular_alert_timestamp">Timestamp</label>
+        <div class="controls">
+            <input type="text" name="action.aws_sns_modular_alert.param.timestamp" id="aws_sns_modular_alert_timestamp" value="$result._time$"/>
+            <span class="help-block"></span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label" for="aws_sns_modular_alert_event">Event</label>
+        <div class="controls">
+            <input type="text" name="action.aws_sns_modular_alert.param.event" id="aws_sns_modular_alert_event" value="$result._raw$"/>
+            <span class="help-block"> </span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label" for="aws_sns_modular_alert_message">Message <span class="required">*</span></label>
+        <div class="controls">
+            <textarea type="text" name="action.aws_sns_modular_alert.param.message" style="height:100px;" id="aws_sns_modular_alert_message" >$result.message$</textarea>
+            <span class="help-block">If the message is empty, Splunk will not publish the alert to AWS SNS.</span>
+        </div>
+    </div>
+</form>

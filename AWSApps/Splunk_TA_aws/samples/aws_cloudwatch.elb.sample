@@ -1,0 +1,2 @@
+{"metric_dimensions": "AvailabilityZone=[ap-southeast-1a],LoadBalancerName=[shpool-old]", "SampleCount": "", "Average": "0.0", "period": "60", "metric_name": "UnHealthyHostCount", "Unit": "Count", "account_id": "000000000000"}
+{"metric_dimensions": "AvailabilityZone=[ap-southeast-1a],LoadBalancerName=[shpool-old]", "SampleCount": "", "Average": "2.0", "period": "60", "metric_name": "HealthyHostCount", "Unit": "Count", "account_id": "000000000000"}

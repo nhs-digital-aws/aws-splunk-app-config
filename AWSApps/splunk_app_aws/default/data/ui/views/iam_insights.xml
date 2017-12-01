@@ -1,0 +1,76 @@
+<form script="common_insights.js">
+    <label>IAM Insights</label>
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" id="account" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <fieldForLabel>title</fieldForLabel>
+            <fieldForValue>account_id</fieldForValue>
+            <search>
+                <query>
+                    <![CDATA[
+                        | aclinputlookup all_account_ids
+                        | mvcombine delim=", " name
+                        | nomv name
+                        | eval title=account_id." (".name.")"
+                    ]]>
+                </query>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="insight_filter" searchWhenChanged="true">
+            <label>Insights Filter</label>
+            <choice value="*">All</choice>
+            <default>All</default>
+            <fieldForLabel>insight</fieldForLabel>
+            <fieldForValue>insight</fieldForValue>
+            <search>
+                <query>
+                    <![CDATA[
+                        | inputlookup insights | search service="IAM" | sort - severity
+                    ]]>
+                </query>
+            </search>
+            <valuePrefix>insight="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <delimiter> OR </delimiter>
+        </input>
+    </fieldset>
+    <search id="baseSearch">
+        <query>
+            <![CDATA[
+            `aws-password-policy-iam($accountId$)`
+            | append [search earliest=-1d `aws-key-rotation-iam($accountId$)`]
+            | append [search earliest=-1d `aws-long-unused-iam($accountId$)`]
+            ]]>
+        </query>
+        <earliest>-d</earliest>
+        <latest>now</latest>
+    </search>
+    <row>
+        <panel>
+            <table id="results">
+                <search base="baseSearch">
+                    <query>
+                        <![CDATA[
+                            search $insight_filter$
+                            | eval service="IAM"
+                            | lookup insights insight service OUTPUT severity as Severity
+                            | sort - Severity
+                            | rename account_id as "Account ID", UserName as "User Name", insight as Insight
+                            | table "Account ID", "User Name", Insight, Severity
+                        ]]>
+                    </query>
+                </search>
+                <option name="drilldown">none</option>
+                <option name="count">15</option>
+            </table>
+        </panel>
+    </row>
+</form>

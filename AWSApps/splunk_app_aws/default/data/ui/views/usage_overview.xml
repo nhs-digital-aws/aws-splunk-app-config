@@ -1,0 +1,330 @@
+<form script="base_page.js">
+    <label>Usage Overview</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input id="awstags" token="tags">
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 24 hours</default>
+        </input>
+    </fieldset>
+
+    <search id="baseCPUSearch">
+        <query>
+            <![CDATA[
+                `aws-cloudwatch-ec2($accountId$, $region$)` metric_name=CPUUtilization
+                | stats count,sparkline(avg(Average)) as cpu_util, avg(Average) as ave_cpu by metric_dimensions
+            ]]>
+        </query>
+        <earliest>-7d</earliest>
+        <latest>now</latest>
+    </search>
+
+    <row>
+        <panel>
+            <title>EC2 and EBS</title>
+            <single>
+                <title>Running EC2 Instances</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                            | stats count(id) as count by state
+                            | eventstats sum(count) as total
+                            | search state="running"
+                            | nadefault count total
+                            | eval _total_name="instances", _total_field=total
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link>
+                        instance_usage?form.accountId=$form.accountId$&amp;regions=$form.region$&amp;form.tags=$tags$&amp;latest=$latest$&amp;earliest=$earliest$
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+            <single>
+                <title>In-Use EBS Volumes</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ec2_volumes")` $tags|tag2description$
+                            | stats dc(id) as count by status
+                            | eventstats sum(count) as total
+                            | where status="in-use"
+                            | nadefault count total
+                            | eval _total_name="volumes", _total_field=total
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link>
+                        ebs_usage?form.accountId=$form.accountId$&amp;regions=$form.region$&amp;form.tags=$tags$&amp;latest=$latest$&amp;earliest=$earliest$
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+            <single>
+                <title>In-Use EBS Volume Size</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ec2_volumes")` $tags|tag2description$
+                            | search status="in-use"
+                            | stats sum(size) as size
+                            | nadefault size
+                            | `volume_size(size)`
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link>
+                        ebs_usage?form.accountId=$form.accountId$&amp;regions=$form.region$&amp;form.tags=$tags$&amp;latest=$latest$&amp;earliest=$earliest$
+                    </link>
+                </drilldown>
+                <option name="field">size</option>
+            </single>
+            <single>
+                <title>EBS Snapshots Size</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-resource($accountId$, $region$, "ebs_snapshots")` $tags|tag2description$
+                            | stats dc(id) as count, sum(volume_size) as size
+                            | nadefault count size
+                            | `volume_size(size)`
+                            | eval _total_name="snapshots", _total_prefix="from", _total_field=count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link>
+                        ebs_usage?form.accountId=$form.accountId$&amp;regions=$form.region$&amp;form.tags=$tags$&amp;latest=$latest$&amp;earliest=$earliest$
+                    </link>
+                </drilldown>
+                <option name="field">size</option>
+            </single>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <title>ELB</title>
+            <single>
+                <title>Total ELBs</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-elb($accountId$, $region$)`
+                            | stats dc(uniq_id) as count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <drilldown>
+                    <link>
+                        elb_usage?form.accountId=$form.accountId$&amp;regions=$form.region$&amp;latest=$latest$&amp;earliest=$earliest$
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+            <single>
+                <title>Total Requests - Last 7 Days</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-elb($accountId$, $region$)` metric_name=RequestCount
+                            | timechart span=7d sum(Sum) as count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>-13d</earliest>
+                    <latest>now</latest>
+                </search>
+                <drilldown>
+                    <link>
+                        elb_usage?form.accountId=$form.accountId$&amp;regions=$form.region$&amp;latest=$latest$&amp;earliest=$earliest$
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+            <single>
+                <title>Unhealthy EC2 Instances</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-description-clb($accountId$, $region$)`
+                            | eval instances=mvzip('instances{}.instance_id', 'instances{}.state')
+                            | fields - _raw
+                            | mvexpand instances
+                            | rex field=instances "(?<instance_id>[^,]+),(?<instance_state>[^,]+)"
+                            | dedup instance_id
+                            | stats count(instance_id) as total, count(eval(instance_state="OutOfService")) as count
+                            | append [search `aws-description-alb($accountId$, $region$)`
+                                | eval targets=mvzip('TargetGroups{}.TargetHealthDescriptions{}.Target.Id', 'TargetGroups{}.TargetHealthDescriptions{}.TargetHealth.State')
+                                | fields - _raw
+                                | mvexpand targets
+                                | rex field=targets "(?<instance_id>[^,]+),(?<instance_state>[^,]+)"
+                                | dedup instance_id
+                                | stats count(instance_id) as total, count(eval(instance_state!="healthy")) as count ]
+                            | stats sum(total) as total, sum(count) as count
+                            | nadefault total count
+                            | eval _total_name="EC2 Instances", _total_field=total
+                        ]]>
+                    </query>
+                    <earliest>-1d</earliest>
+                    <latest>now</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-description-clb($form.accountId$, $region$)`
+                            | eval instances=mvzip('instances{}.instance_id', 'instances{}.state')
+                            | fields - _raw
+                            | mvexpand instances
+                            | rex field=instances "(%3F<instance_id>[^,]%2B),(%3F<instance_state>[^,]%2B)"
+                            | dedup instance_id
+                            | search instance_state="OutOfService"
+                            | append [search `aws-description-alb($accountId$, $region$)`
+                                | eval targets=mvzip('TargetGroups{}.TargetHealthDescriptions{}.Target.Id', 'TargetGroups{}.TargetHealthDescriptions{}.TargetHealth.State')
+                                | fields - _raw
+                                | mvexpand targets
+                                | rex field=targets "(%3F<instance_id>[^,]%2B),(%3F<instance_state>[^,]%2B)"
+                                | dedup instance_id
+                                | search instance_state!="healthy" ]
+                            | table name, instance_id, instance_state
+                            | rename name as "Load Balancer Name", instance_id as "Instance ID", instance_state as "Instance State"&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">none</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[0]</option>
+            </single>
+            <single>
+                <title>ELB Error Requests - Last 7 Days</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            `aws-cloudwatch-elb($accountId$, $region$)` (metric_name=HTTPCode_ELB_4XX OR metric_name=HTTPCode_ELB_5XX OR metric_name=HTTPCode_ELB_4XX_Count OR metric_name=HTTPCode_ELB_5XX_Count)
+                            | timechart span=7d sum(Sum) as count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>-13d</earliest>
+                    <latest>now</latest>
+                </search>
+                <drilldown>
+                    <link>
+                        elb_usage?form.accountId=$form.accountId$&amp;regions=$form.region$&amp;latest=$latest$&amp;earliest=$earliest$
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+                <option name="useColors">1</option>
+                <option name="colorBy">trend</option>
+                <option name="trendColorInterpretation">inverse</option>
+                <option name="colorMode">none</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[0]</option>
+            </single>
+        </panel>
+    </row>
+
+    <row>
+        <table>
+            <title>Max CPU Utilization - Last 7 Days Top 5</title>
+            <search base="baseCPUSearch">
+                <query>
+                    <![CDATA[
+                        eval ave_cpu_util=round(ave_cpu,2)
+                        | `aws-cloudwatch-dimension-rex("InstanceId", "resourceId")`
+                        | fields resourceId,cpu_util,ave_cpu_util
+                        | rename resourceId as id
+                        | join type=inner id [search earliest=-1d `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                        | fields id, instance_type, region, tags.Name]
+                        | table id, tags.Name, instance_type, region, cpu_util, ave_cpu_util
+                        | fillnull value=N/A
+                        | sort 5 -num(ave_cpu_util)
+                        | lookup regions region OUTPUT label as region
+                        | rename id as ID, tags.Name as Name, instance_type as Type, region as Region, cpu_util as "CPU Util.", ave_cpu_util as "Avg. CPU Util."
+                    ]]>
+                </query>
+            </search>
+            <drilldown>
+                <link>
+                    individual_instance_usage?form.instances=$row.ID$&amp;form.accountId=$form.accountId$&amp;regions=$form.region$&amp;latest=$latest$&amp;earliest=$earliest$
+                </link>
+            </drilldown>
+            <option name="count">10</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="drilldown">row</option>
+        </table>
+        <table>
+            <title>Min CPU Utilization - Last 7 Days Top 5</title>
+            <search base="baseCPUSearch">
+                <query>
+                    <![CDATA[
+                        eval ave_cpu_util=round(ave_cpu,2)
+                        | `aws-cloudwatch-dimension-rex("InstanceId", "resourceId")`
+                        | fields resourceId,cpu_util,ave_cpu_util
+                        | rename resourceId as id
+                        | join type=inner id [search earliest=-1d `aws-description-resource($accountId$, $region$, "ec2_instances")` $tags|tag2description$
+                        | fields id, instance_type, region, tags.Name]
+                        | table id, tags.Name, instance_type, region, cpu_util, ave_cpu_util
+                        | fillnull value=N/A
+                        | sort 5 num(ave_cpu_util)
+                        | lookup regions region OUTPUT label as region
+                        | rename id as ID, tags.Name as Name, instance_type as Type, region as Region, cpu_util as "CPU Util.", ave_cpu_util as "Avg. CPU Util."
+                    ]]>
+                </query>
+            </search>
+            <drilldown>
+                <link>
+                    individual_instance_usage?form.instances=$row.ID$&amp;form.accountId=$form.accountId$&amp;regions=$form.region$&amp;latest=$latest$&amp;earliest=$earliest$
+                </link>
+            </drilldown>
+            <option name="count">10</option>
+            <option name="displayRowNumbers">true</option>
+            <option name="drilldown">row</option>
+        </table>
+    </row>
+
+</form>

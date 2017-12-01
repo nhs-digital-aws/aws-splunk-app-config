@@ -1,0 +1,26 @@
+ErrorCode,ErrorDetail,sourcetype,ErrorType
+SSLError,*,*,network
+TimeoutError,*,*,network
+ReadTimeoutError,*,*,network
+EndpointConnectionError,*,*,network
+ConnectionError,"HTTPSConnectionPool*ProxyError*",*,network
+ConnectTimeout,"HTTPSConnectionPool*ConnectTimeoutError*",*,network
+WindowsError,"[Error 87] The parameter is incorrect",*,configuration
+S3ResponseError,"S3ResponseError: 404 Not Found","aws:s3:log",configuration
+AWSAccountError,"account not found","aws:s3:log",configuration
+ConfigurationError,*,"aws:s3:log",configuration
+S3ResponseError,"S3ResponseError: 403 Forbidden","aws:s3:log",authentication
+HTTPError,"HTTP 500*REST ERROR[400]*","aws:logs:log",configuration
+UnsupportedLogType,*,"aws:logs:log",configuration
+ClientError,"*(NoSuchBucket)*","aws:logs:log",configuration
+ClientError,"*(AccessDenied)*","aws:logs:log",authentication
+HTTPError,"HTTP 500*REST ERROR[400]*","aws:sqsbaseds3:log",configuration
+*,"Dead letter queue not found.","aws:sqsbaseds3:log",configuration
+InvalidObjectState,"*due to ClientError: An error occurred (InvalidObjectState) when calling the GetObject operation: The operation is not valid for the object's storage class.*","aws:sqsbaseds3:log",configuration
+ClientError,"*(AWS.SimpleQueueService.NonExistentQueue)*","aws:sqsbaseds3:log",configuration
+ClientError,"*(AccessDenied)*","aws:sqsbaseds3:log",authentication
+ConfigurationError,"Service is unsupported.","aws:description:log",configuration
+AWSAccountError,"*account not found*","aws:description:log",configuration
+BotoServerError,"*RequestLimitExceeded*","aws:description:log",throttling
+ClientError,"*RequestLimitExceeded*","aws:decription:log",throttling
+ConfigurationError,*,"aws:cloudwatch:log",configuration

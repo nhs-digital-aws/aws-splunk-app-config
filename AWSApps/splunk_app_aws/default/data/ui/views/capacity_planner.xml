@@ -1,0 +1,228 @@
+<form script="capacity_planner.js">
+    <label>Capacity Planner</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="billingAccountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <selectFirstChoice>true</selectFirstChoice>
+            <fieldForValue>LinkedAccountId</fieldForValue>
+            <fieldForLabel>Account</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[
+                        | tstats summariesonly=t count FROM datamodel=Instance_Hour by instance_hour.LinkedAccountId
+                        | rename instance_hour.LinkedAccountId as LinkedAccountId
+                        | `aws-accountid-to-name`
+                    ]]>
+                </query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>instance_hour.LinkedAccountId="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>instance_hour.AvailabilityZone="</valuePrefix>
+            <valueSuffix>*"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input id="awstags" token="tags">
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Previous month</default>
+        </input>
+    </fieldset>
+
+    <search id="baseInstanceHours">
+        <query>
+            <![CDATA[
+                | tstats summariesonly=t count sum(instance_hour.BlendedCost) as cost FROM datamodel=Instance_Hour where $billingAccountId$ $region$ AND instance_hour.instance_type="$instance_type$" AND instance_hour.platform="$platform$" AND instance_hour.tenancy="$tenancy$" AND instance_hour.ReservedInstance="$reserved$" $tags|tag2instance_hour$ by instance_hour.ReservedInstance
+            ]]>
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <panel>
+            <title>Capacity Planning</title>
+            <input type="dropdown" token="instance_type" searchWhenChanged="true">
+                <label>Instance Type</label>
+                <choice value="*">All</choice>
+                <selectFirstChoice>true</selectFirstChoice>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats summariesonly=t count FROM datamodel=Instance_Hour where $billingAccountId$ $region$ by instance_hour.instance_type
+                            | rename instance_hour.instance_type as instance_type
+                        ]]>
+                    </query>
+                </search>
+                <fieldForLabel>instance_type</fieldForLabel>
+                <fieldForValue>instance_type</fieldForValue>
+            </input>
+            <input type="dropdown" token="platform" searchWhenChanged="true">
+                <label>Platform</label>
+                <choice value="*">All</choice>
+                <default>*</default>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats summariesonly=t count FROM datamodel=Instance_Hour where $billingAccountId$ $region$ by instance_hour.platform
+                            | rename instance_hour.platform as platform
+                        ]]>
+                    </query>
+                </search>
+                <fieldForLabel>platform</fieldForLabel>
+                <fieldForValue>platform</fieldForValue>
+            </input>
+            <input type="dropdown" token="tenancy" searchWhenChanged="true">
+                <label>Tenancy</label>
+                <choice value="*">All</choice>
+                <default>*</default>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats summariesonly=t count FROM datamodel=Instance_Hour where $billingAccountId$ $region$ by instance_hour.tenancy
+                            | rename instance_hour.tenancy as tenancy
+                        ]]>
+                    </query>
+                </search>
+                <fieldForLabel>tenancy</fieldForLabel>
+                <fieldForValue>tenancy</fieldForValue>
+            </input>
+            <input type="dropdown" token="reserved" searchWhenChanged="true">
+                <label>Reserved Instances</label>
+                <choice value="*">Both</choice>
+                <choice value="Y">Yes</choice>
+                <choice value="N">No</choice>
+                <default>*</default>
+            </input>
+            <input type="dropdown" token="instance.groupby">
+                <label>Group By</label>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | `aws-billing-datamodel-tags`
+                            | eval title = "Tag: ".title
+                            | append [| makeresults | eval title="Availability Zone", key="AvailabilityZone"]
+                        ]]>
+                    </query>
+                </search>
+                <fieldForLabel>title</fieldForLabel>
+                <fieldForValue>key</fieldForValue>
+                <choice value="none">None</choice>
+                <choice value="instance_type">Instance Type</choice>
+                <choice value="platform">Platform</choice>
+                <choice value="tenancy">Tenancy</choice>
+                <choice value="reservation">Reservation</choice>
+                <default>none</default>
+                <initialValue>none</initialValue>
+            </input>
+            <single>
+                <title>Total Instance Hours</title>
+                <search base="baseInstanceHours">
+                    <query>
+                        <![CDATA[
+                            stats sum(count) as instance_hours
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">instance_hours</option>
+            </single>
+            <single>
+                <title>Percentage of On-Demand Hours</title>
+                <search base="baseInstanceHours">
+                    <query>
+                        <![CDATA[
+                            eventstats sum(count) as total
+                            | search instance_hour.ReservedInstance=N
+                            | eval percent=count*100/total
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">percent</option>
+                <option name="underLabel">Percentage (%)</option>
+                <option name="useColors">1</option>
+                <option name="rangeValues">[0,50,80,100]</option>
+                <option name="rangeColors">["0xgreen","0xorange","0xf7bc38","0xd93f3c","0xd93f3c"]</option>
+            </single>
+            <single>
+                <title>Total Instance Cost</title>
+                <search base="baseInstanceHours">
+                    <query>
+                        <![CDATA[
+                            stats sum(cost) as cost
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">cost</option>
+            </single>
+            <single>
+                <title>Percentage of On-Demand Cost</title>
+                <search base="baseInstanceHours">
+                    <query>
+                        <![CDATA[
+                            eventstats sum(cost) as total
+                            | search instance_hour.ReservedInstance=N
+                            | eval percent=cost*100/total
+                        ]]>
+                    </query>
+                </search>
+                <option name="field">percent</option>
+                <option name="underLabel">Percentage (%)</option>
+                <option name="useColors">1</option>
+                <option name="rangeValues">[0,50,80,100]</option>
+                <option name="rangeColors">["0xgreen","0xorange","0xf7bc38","0xd93f3c","0xd93f3c"]</option>
+            </single>
+            <chart>
+                <title>Instance Hours</title>
+                <search>
+                    <query>
+                        <![CDATA[
+                            | tstats summariesonly=t count FROM datamodel=Instance_Hour where $billingAccountId$ $region$ AND instance_hour.instance_type="$instance_type$" AND instance_hour.platform="$platform$" AND instance_hour.tenancy="$tenancy$" AND instance_hour.ReservedInstance="$reserved$" $tags|tag2instance_hour$ $instance.groupby|groupby2countspl$
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY.text">Instance Hours</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">false</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">false</option>
+                <option name="dataOverlayMode">none</option>
+            </chart>
+        </panel>
+    </row>
+</form>

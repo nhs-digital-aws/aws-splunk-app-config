@@ -1,0 +1,472 @@
+<form script="base_page.js">
+    <label>VPC Flow Logs - Traffic Analysis</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" searchWhenChanged="true" token="interfaces">
+            <label>Interface ID</label>
+            <choice value="*">All</choice>
+            <default>*</default>
+            <delimiter> OR </delimiter>
+            <prefix>(</prefix>
+            <suffix>)</suffix>
+            <valuePrefix>interface_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <fieldForValue>interface_id</fieldForValue>
+            <fieldForLabel>interface_id</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[
+                        `aws-vpc-flow-log-index` source="dest_port" $accountId$ | stats count by interface_id
+                    ]]>
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+        </input>
+        <input type="dropdown" searchWhenChanged="true" token="protocol">
+            <label>Protocol</label>
+            <choice value="*">All</choice>
+            <default>*</default>
+            <fieldForValue>protocol</fieldForValue>
+            <fieldForLabel>protocol</fieldForLabel>
+            <search>
+                <query>
+                    <![CDATA[
+                        `aws-vpc-flow-log-index` source="dest_port" $interfaces$ $accountId$ | stats count by protocol
+                    ]]>
+                </query>
+                <earliest>$earliest$</earliest>
+                <latest>$latest$</latest>
+            </search>
+        </input>
+        <input type="dropdown" searchWhenChanged="true" token="action">
+            <label>Action</label>
+            <choice value="*">Both</choice>
+            <choice value="ACCEPT">Accept</choice>
+            <choice value="REJECT">Reject</choice>
+            <default>ACCEPT</default>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 4 hours</default>
+        </input>
+    </fieldset>
+
+    <search id="basic_metrics">
+        <query>
+            <![CDATA[
+                `aws-vpc-flow-log-index` source="dest_port" vpcflow_action=$action$ protocol=$protocol$ $interfaces$ $accountId$
+                | dedup _time interface_id aws_account_id protocol vpcflow_action
+                | stats sum(total_bytes) as total_bytes sum(total_packets) as total_packets by interface_id aws_account_id protocol vpcflow_action
+            ]]>
+        </query>
+    </search>
+
+    <search id="basic_src_ip">
+        <query>
+            <![CDATA[
+                `aws-vpc-flow-log-index` source="src_ip" vpcflow_action=$action$ protocol=$protocol$ $interfaces$ $accountId$
+                | stats sum(bytes) as bytes by src_ip protocol City Country Region lat lon
+            ]]>
+        </query>
+    </search>
+
+    <search id="basic_dest_ip">
+        <query>
+            <![CDATA[
+                `aws-vpc-flow-log-index` source="dest_ip" vpcflow_action=$action$ protocol=$protocol$ $interfaces$ $accountId$
+                | stats sum(bytes) as bytes sum(packets) as packets by dest_ip
+            ]]>
+        </query>
+    </search>
+
+    <search id="basic_dest_port">
+        <query>
+            <![CDATA[
+                `aws-vpc-flow-log-index` source="dest_port" vpcflow_action=$action$ protocol=$protocol$ $interfaces$ $accountId$
+                | stats sum(bytes) as bytes sum(packets) as packets by dest_port
+            ]]>
+        </query>
+    </search>
+
+    <row>
+        <panel>
+            <single>
+                <title>Monitored Interfaces</title>
+                <search base="basic_metrics">
+                    <query>
+                        stats dc(interface_id) as interfaces
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                       <![CDATA[
+                            search?q=search `aws-vpc-flow($accountId$, $interfaces$, $protocol$, $action$)`
+                            | stats count by interface_id region aws_account_id
+                            | table aws_account_id region interface_id&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">interfaces</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">block</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[50]</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">standard</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="trendInterval">auto</option>
+                <option name="useColors">0</option>
+                <option name="useThousandSeparators">1</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Traffic Protocols</title>
+                <search base="basic_metrics">
+                    <query>
+                        stats dc(protocol) as protocols
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                       <![CDATA[
+                            search?q=search `aws-vpc-flow($accountId$, $interfaces$, $protocol$, $action$)`
+                            | stats count by protocol aws_account_id
+                            | table aws_account_id protocol&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">protocols</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">block</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x555","0x555"]</option>
+                <option name="rangeValues">[0]</option>
+                <option name="trendColorInterpretation">standard</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="trendInterval">auto</option>
+                <option name="useColors">0</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>All Traffic (GB)</title>
+                <search base="basic_metrics">
+                    <query>
+                        stats sum(total_bytes) as total_bytes
+                        | eval GB=round(total_bytes/1024/1024/1024,2)
+                        | fields GB
+                        | nadefault GB
+                    </query>
+                </search>
+                <option name="colorBy">value</option>
+                <option name="colorMode">block</option>
+                <option name="rangeColors">["0x6db7c6","0x65a637"]</option>
+                <option name="rangeValues">[400000]</option>
+                <option name="trendInterval">auto</option>
+                <option name="useColors">0</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="drilldown">none</option>
+                <option name="numberPrecision">0.00</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">standard</option>
+                <option name="trendDisplayMode">absolute</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Traffic Destinations</title>
+                <search base="basic_dest_ip">
+                    <query>
+                        stats dc(dest_ip) as dest_ips
+                        | `pretty_print(dest_ips)`
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                       <![CDATA[
+                            search?q=search `aws-vpc-flow($accountId$, $interfaces$, $protocol$, $action$)`
+                            | stats count as Packages by dest_ip
+                            | iplocation dest_ip
+                            | table dest_ip Country Region City Packages
+                            | sort -Packages&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">dest_ips</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">block</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x65a637","0x6db7c6","0xf7bc38","0xf58f39","0xd93f3c"]</option>
+                <option name="rangeValues">[0,2,40,100]</option>
+                <option name="useColors">0</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">standard</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="trendInterval">auto</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Traffic Sources</title>
+                <search base="basic_src_ip">
+                    <query>
+                        stats dc(src_ip) as src_ips
+                        | `pretty_print(src_ips)`
+                    </query>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                       <![CDATA[
+                            search?q=search `aws-vpc-flow($accountId$, $interfaces$, $protocol$, $action$)`
+                            | stats count as Packages by src_ip
+                            | iplocation src_ip
+                            | table src_ip Country Region City Packages
+                            | sort -Packages&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">src_ips</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">block</option>
+                <option name="numberPrecision">0</option>
+                <option name="rangeColors">["0x65a637","0x6db7c6","0xf58f39","0xd93f3c"]</option>
+                <option name="rangeValues">[2000,3000,4000]</option>
+                <option name="useColors">0</option>
+                <option name="useThousandSeparators">1</option>
+                <option name="showSparkline">1</option>
+                <option name="showTrendIndicator">1</option>
+                <option name="trendColorInterpretation">standard</option>
+                <option name="trendDisplayMode">absolute</option>
+                <option name="trendInterval">auto</option>
+            </single>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <chart>
+                <title>Traffic Over Time by Interface (Top 5)</title>
+                <search>
+                    <query>
+                        `aws-vpc-flow-log-index` source="dest_port" vpcflow_action=$action$ protocol=$protocol$ $interfaces$ $accountId$
+                        | dedup _time interface_id aws_account_id protocol vpcflow_action
+                        | timechart sum(eval(round(total_bytes/1024/1024,2))) as MB by interface_id limit=5 useother=f
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisTitleY.text">MB</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">log</option>
+                <option name="charting.chart">area</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">bottom</option>
+            </chart>
+        </panel>
+        <panel>
+            <map>
+                <title>Traffic Size by Protocol and Location</title>
+                <search base="basic_src_ip">
+                    <query>
+                        geostats sum(bytes) by protocol
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                       <![CDATA[
+                            search?q=`aws-vpc-flow($accountId$, $interfaces$, $protocol$, $action$)`
+                            | stats sum(bytes) as Bytes by src_ip protocol
+                            | iplocation src_ip
+                            | search lat>=$click.bounds.south$ lat<$click.bounds.north$ lon>=$click.bounds.west$ lon<$click.bounds.east$
+                            | stats sum(Bytes) as Bytes by src_ip Country City Region lat lon protocol
+                            | sort -Bytes&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="mapping.choroplethLayer.colorBins">5</option>
+                <option name="mapping.choroplethLayer.colorMode">auto</option>
+                <option name="mapping.choroplethLayer.maximumColor">0xDB5800</option>
+                <option name="mapping.choroplethLayer.minimumColor">0x2F25BA</option>
+                <option name="mapping.choroplethLayer.neutralPoint">0</option>
+                <option name="mapping.choroplethLayer.shapeOpacity">0.75</option>
+                <option name="mapping.choroplethLayer.showBorder">1</option>
+                <option name="mapping.data.maxClusters">100</option>
+                <option name="mapping.drilldown">all</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+                <option name="mapping.map.panning">true</option>
+                <option name="mapping.map.scrollZoom">false</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="mapping.markerLayer.markerMaxSize">50</option>
+                <option name="mapping.markerLayer.markerMinSize">10</option>
+                <option name="mapping.markerLayer.markerOpacity">0.8</option>
+                <option name="mapping.showTiles">1</option>
+                <option name="mapping.tileLayer.maxZoom">7</option>
+                <option name="mapping.tileLayer.minZoom">0</option>
+                <option name="mapping.tileLayer.tileOpacity">1</option>
+                <option name="mapping.type">marker</option>
+                <option name="drilldown">all</option>
+                <option name="mapping.fieldColors">{REJECT:0xd93f3c,ACCEPT:0x65a637}</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="height">300</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+            </map>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <chart>
+                <title>Top Destination Addresses</title>
+                <search base="basic_dest_ip">
+                    <query>
+                        stats sum(bytes) as bytes by dest_ip
+                        | sort 10 -bytes
+                        | eval "Size (MB)" = round(bytes/1024/1204,2)
+                        | fields - bytes
+                        | rename dest_ip as "Destination IP"
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">visible</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">pie</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.showDataLabels">minmax</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Top Destination Ports</title>
+                <search base="basic_dest_port">
+                    <query>
+                        sort 10 -bytes
+                        | eval "Size (MB)" = round(bytes/1024/1204,2)
+                        | fields - bytes
+                        | rename dest_port as "Destination Port"
+                    </query>
+                </search>
+                <option name="wrap">true</option>
+                <option name="rowNumbers">true</option>
+                <option name="dataOverlayMode">none</option>
+                <option name="count">10</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">bar</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">none</option>
+            </chart>
+        </panel>
+        <panel>
+            <chart>
+                <title>Top Source Address</title>
+                <search base="basic_src_ip">
+                    <query>
+                        stats sum(bytes) as bytes by src_ip
+                        | sort 10 -bytes
+                        | eval "Size (MB)" = round(bytes/1024/1204,2)
+                        | fields - bytes
+                        | rename src_ip as "Source IPs"
+                    </query>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">visible</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">pie</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">gaps</option>
+                <option name="charting.chart.showDataLabels">minmax</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+</form>

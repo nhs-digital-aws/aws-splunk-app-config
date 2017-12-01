@@ -1,0 +1,17 @@
+service,insight,description,severity
+Elastic load balancing,No healthy instance,,3
+Elastic load balancing,One healthy instance without autoscaling,,2
+Elastic load balancing,Not enough requests,,2
+Elastic load balancing,Insecure listener protocol,,2
+Elastic load balancing,Healthy instances are not cross-zone,,1
+Security group,Unrestricted access on specific ports,,3
+Security group,Unrestricted access,,2
+Security group,Unused security group,,2
+Security group,Redundant security groups,,1
+Security group,Large number of rules,,1
+IAM,No password policy,,3
+IAM,User is unused for long time,,2
+IAM,IAM access key rotation,,2
+IAM,Password reuse is not prevented,,1
+Elastic IP,No attached instance,,3
+Elastic IP,Inactive attached instance,,2

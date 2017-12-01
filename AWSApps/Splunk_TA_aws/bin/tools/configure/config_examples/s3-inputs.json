@@ -1,0 +1,18 @@
+[
+    {
+        "stanzas": [
+            {
+                "name": "s3-01",
+                "aws_account": "aws-account-0",
+                "aws_iam_role": "aws-iam-role-0",
+                "host_name": "s3.amazonaws.com",
+                "bucket_name": "cloudtrail-bucket",
+                "key_name": "AWSLogs/",
+                "initial_scan_datetime": "2010-01-01T00:00:00Z",
+                "polling_interval": "1800",
+                "sourcetype": "aws:cloudtrail",
+                "index": "default"
+            }
+        ]
+    }
+]

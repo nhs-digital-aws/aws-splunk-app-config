@@ -1,0 +1,469 @@
+{
+    "modelName": "CloudFront_Access_Log",
+    "displayName": "CloudFront Access Log",
+    "description": "",
+    "objectSummary": {
+        "Event-Based": 1,
+        "Transaction-Based": 0,
+        "Search-Based": 0
+    },
+    "objects": [
+        {
+            "objectName": "CloudFront_Access_Log",
+            "displayName": "CloudFront Access Log",
+            "parentName": "BaseEvent",
+            "fields": [
+                {
+                    "fieldName": "client_ip",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "ipv4",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "client_ip",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cs_bytes",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cs_bytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cs_cookie",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cs_cookie",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cs_host",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cs_host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cs_method",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cs_method",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cs_protocol",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cs_protocol",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cs_referer",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cs_referer",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cs_uri_query",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cs_uri_query",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cs_uri_stem",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cs_uri_stem",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cs_user_agent",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cs_user_agent",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "date",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "date",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "edge_location_name",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "edge_location_name",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "eventtype",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "eventtype",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "index",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "index",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sc_bytes",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sc_bytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sc_status",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sc_status",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "time",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "time_taken",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "time_taken",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "x_edge_location",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "x_edge_location",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "x_edge_request_id",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "x_edge_request_id",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "x_edge_result_type",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "x_edge_result_type",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "x_host_header",
+                    "owner": "CloudFront_Access_Log",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "x_host_header",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "client_ip_lon",
+                            "owner": "CloudFront_Access_Log",
+                            "type": "number",
+                            "fieldSearch": "client_ip_lon=*",
+                            "required": true,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "client_ip_lon",
+                            "comment": "",
+                            "lookupOutputFieldName": "lon"
+                        },
+                        {
+                            "fieldName": "client_ip_lat",
+                            "owner": "CloudFront_Access_Log",
+                            "type": "number",
+                            "fieldSearch": "client_ip_lat=*",
+                            "required": true,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "client_ip_lat",
+                            "comment": "",
+                            "lookupOutputFieldName": "lat"
+                        },
+                        {
+                            "fieldName": "client_ip_City",
+                            "owner": "CloudFront_Access_Log",
+                            "type": "string",
+                            "fieldSearch": "client_ip_City=*",
+                            "required": true,
+                            "multivalue": false,
+                            "hidden": true,
+                            "editable": true,
+                            "displayName": "client_ip_City",
+                            "comment": "",
+                            "lookupOutputFieldName": "City"
+                        },
+                        {
+                            "fieldName": "client_ip_Region",
+                            "owner": "CloudFront_Access_Log",
+                            "type": "string",
+                            "fieldSearch": "client_ip_Region=*",
+                            "required": true,
+                            "multivalue": false,
+                            "hidden": true,
+                            "editable": true,
+                            "displayName": "client_ip_Region",
+                            "comment": "",
+                            "lookupOutputFieldName": "Region"
+                        },
+                        {
+                            "fieldName": "client_ip_Country",
+                            "owner": "CloudFront_Access_Log",
+                            "type": "string",
+                            "fieldSearch": "client_ip_Country=*",
+                            "required": true,
+                            "multivalue": false,
+                            "hidden": true,
+                            "editable": true,
+                            "displayName": "client_ip_Country",
+                            "comment": "",
+                            "lookupOutputFieldName": "Country"
+                        }
+                    ],
+                    "inputField": "client_ip",
+                    "calculationType": "GeoIP",
+                    "comment": "",
+                    "owner": "CloudFront_Access_Log",
+                    "calculationID": "y5o47dv8fcelv7vi",
+                    "editable": true
+                },
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "account_id",
+                            "owner": "CloudFront_Access_Log",
+                            "type": "string",
+                            "fieldSearch": "account_id=*",
+                            "required": true,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "account_id",
+                            "comment": "",
+                            "lookupOutputFieldName": "account_id"
+                        }
+                    ],
+                    "calculationType": "Lookup",
+                    "lookupName": "cloudfront_edges",
+                    "comment": "",
+                    "lookupInputs": [
+                        {
+                            "inputField": "cs_host",
+                            "lookupField": "domain_name"
+                        }
+                    ],
+                    "owner": "CloudFront_Access_Log",
+                    "calculationID": "2zvnxjn34xfni0pju5cow29",
+                    "editable": true
+                },
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "http_user_agent",
+                            "owner": "CloudFront_Access_Log",
+                            "type": "string",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "http_user_agent",
+                            "comment": ""
+                        }
+                    ],
+                    "calculationID": "umpk5lwjsb7vcnryx71oflxr",
+                    "owner": "CloudFront_Access_Log",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Eval",
+                    "expression": "replace(urldecode(cs_user_agent),\"%20\", \" \")"
+                }
+            ],
+            "constraints": [
+                {
+                    "search": "`aws-accesslog-sourcetype(\"cloudfront\")`",
+                    "owner": "CloudFront_Access_Log"
+                }
+            ],
+            "lineage": "CloudFront_Access_Log"
+        }
+    ],
+    "objectNameList": [
+        "CloudFront_Access_Log"
+    ]
+}

@@ -1,0 +1,4 @@
+{"metric_dimensions": "TopicName=[name]", "SampleCount": "", "Average": "0.0555555555556", "period": "120", "Maximum": "1.0", "Minimum": "0.0", "metric_name": "NumberOfNotificationsFailed", "Sum": "2.0", "Unit": "Count", "account_id": "000000000000"}
+{"metric_dimensions": "TopicName=[name]", "SampleCount": "", "Average": "193.0", "period": "120", "Maximum": "193.0", "Minimum": "193.0", "metric_name": "PublishSize", "Sum": "193.0", "Unit": "Bytes", "account_id": "000000000000"}
+{"metric_dimensions": "TopicName=[name]", "SampleCount": "", "Average": "0.5", "period": "120", "Maximum": "1.0", "Minimum": "0.0", "metric_name": "NumberOfMessagesPublished", "Sum": "1.0", "Unit": "Count", "account_id": "000000000000"}
+{"metric_dimensions": "TopicName=[name]", "SampleCount": "", "Average": "1.0", "period": "120", "Maximum": "1.0", "Minimum": "1.0", "metric_name": "NumberOfNotificationsDelivered", "Sum": "34.0", "Unit": "Count", "account_id": "000000000000"}

@@ -1,0 +1,469 @@
+<form script="base_page.js">
+    <label>ELB - Traffic Analysis</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix>(</prefix>
+            <suffix>)</suffix>
+            <valuePrefix>source="*/AWSLogs/</valuePrefix>
+            <valueSuffix>/*_elasticloadbalancing_*.log*"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix>(</prefix>
+            <suffix>)</suffix>
+            <valuePrefix>source="*/elasticloadbalancing/</valuePrefix>
+            <valueSuffix>/*_elasticloadbalancing_*.log*"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="time" searchWhenChanged="true">
+            <label>Time Range</label>
+            <default>Last 7 days</default>
+        </input>
+    </fieldset>
+
+    <search id="elbAccessLogsSearch">
+        <query>
+            <![CDATA[
+                `aws-accesslog-sourcetype("elb")` $accountId$ $region$
+                | eval backend_processing_time=if(isnull(backend_processing_time), target_processing_time, backend_processing_time), backend_status_code=if(isnull(backend_status_code), target_status_code, backend_status_code)
+                | rex field=elb "app/(?<alb_name>.*?)/"
+                | eval elb=if(isnull(type), elb, alb_name)
+                | table elb, client_ip, sent_bytes, received_bytes, elb_status_code, backend_status_code, request_processing_time, response_processing_time, backend_processing_time, request, _time
+            ]]>
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+
+    <row>
+        <panel>
+            <single>
+                <title>Total Entries</title>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | stats count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("elb")` $accountId$ $region$&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Total ELBs</title>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | stats dc(elb) as count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("elb")` $accountId$ $region$
+                            | dedup elb
+                            | table elb&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Unique Clients</title>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | stats dc(client_ip) as count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("elb")` $accountId$ $region$
+                            | dedup client_ip
+                            | table client_ip&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Total Data Sent</title>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | stats sum(sent_bytes) as sent_bytes
+                            | eval sent_bytes = case(sent_bytes>1024*1024*1024, tostring(round(sent_bytes/1024/1024/1024,2))+" GB", sent_bytes>1024*1024, tostring(round(sent_bytes/1024/1024,2))+" MB", sent_bytes>1024, tostring(round(sent_bytes/1024,2))+" KB", true(), tostring(sent_bytes)+" B")
+                            | nadefault sent_bytes
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="field">sent_bytes</option>
+            </single>
+        </panel>
+        <panel>
+            <single>
+                <title>Total Data Received</title>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | stats sum(received_bytes) as received_bytes
+                            | eval received_bytes = case(received_bytes>1024*1024*1024, tostring(round(received_bytes/1024/1024/1024,2))+" GB", received_bytes>1024*1024, tostring(round(received_bytes/1024/1024,2))+" MB", received_bytes>1024, tostring(round(received_bytes/1024,2))+" KB", true(), tostring(received_bytes)+" B")
+                            | nadefault sent_bytes
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="field">received_bytes</option>
+            </single>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <map>
+                <title>Traffic Size by Location (Bytes)</title>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | iplocation client_ip
+                            | eval location = if(City=="",Country,City+","+Country)
+                            | geostats latfield=lat longfield=lon sum(sent_bytes) by location
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="mapping.choroplethLayer.colorBins">5</option>
+                <option name="mapping.choroplethLayer.colorMode">auto</option>
+                <option name="mapping.choroplethLayer.maximumColor">0xDB5800</option>
+                <option name="mapping.choroplethLayer.minimumColor">0x2F25BA</option>
+                <option name="mapping.choroplethLayer.neutralPoint">0</option>
+                <option name="mapping.choroplethLayer.shapeOpacity">0.75</option>
+                <option name="mapping.choroplethLayer.showBorder">1</option>
+                <option name="mapping.data.maxClusters">100</option>
+                <option name="mapping.drilldown">all</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+                <option name="mapping.map.panning">true</option>
+                <option name="mapping.map.scrollZoom">false</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="mapping.markerLayer.markerMaxSize">50</option>
+                <option name="mapping.markerLayer.markerMinSize">10</option>
+                <option name="mapping.markerLayer.markerOpacity">0.8</option>
+                <option name="mapping.showTiles">1</option>
+                <option name="mapping.tileLayer.maxZoom">7</option>
+                <option name="mapping.tileLayer.minZoom">0</option>
+                <option name="mapping.tileLayer.tileOpacity">1</option>
+                <option name="mapping.type">marker</option>
+                <option name="drilldown">all</option>
+                <option name="mapping.fieldColors">{REJECT:0xd93f3c,ACCEPT:0x65a637}</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="height">300</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+            </map>
+        </panel>
+        <panel>
+            <map>
+                <title>Request Count by Location</title>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | iplocation client_ip
+                            | eval location = if(City=="",Country,City+","+Country)
+                            | geostats latfield=lat longfield=lon count by location
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="mapping.choroplethLayer.colorBins">5</option>
+                <option name="mapping.choroplethLayer.colorMode">auto</option>
+                <option name="mapping.choroplethLayer.maximumColor">0xDB5800</option>
+                <option name="mapping.choroplethLayer.minimumColor">0x2F25BA</option>
+                <option name="mapping.choroplethLayer.neutralPoint">0</option>
+                <option name="mapping.choroplethLayer.shapeOpacity">0.75</option>
+                <option name="mapping.choroplethLayer.showBorder">1</option>
+                <option name="mapping.data.maxClusters">100</option>
+                <option name="mapping.drilldown">all</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+                <option name="mapping.map.panning">true</option>
+                <option name="mapping.map.scrollZoom">false</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="mapping.markerLayer.markerMaxSize">50</option>
+                <option name="mapping.markerLayer.markerMinSize">10</option>
+                <option name="mapping.markerLayer.markerOpacity">0.8</option>
+                <option name="mapping.showTiles">1</option>
+                <option name="mapping.tileLayer.maxZoom">7</option>
+                <option name="mapping.tileLayer.minZoom">0</option>
+                <option name="mapping.tileLayer.tileOpacity">1</option>
+                <option name="mapping.type">marker</option>
+                <option name="drilldown">all</option>
+                <option name="mapping.fieldColors">{REJECT:0xd93f3c,ACCEPT:0x65a637}</option>
+                <option name="mapping.map.zoom">3</option>
+                <option name="height">300</option>
+                <option name="mapping.map.center">(42.879094,-97.381205)</option>
+            </map>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <title>Error Entries</title>
+            <single>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | search elb_status_code>399
+                            | stats count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("elb")` $accountId$ $region$ elb_status_code>399&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">none</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[0]</option>
+                <option name="underLabel">ELB Errors</option>
+            </single>
+            <single>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | search backend_status_code>399
+                            | stats count
+                            | nadefault count
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("elb")` $accountId$ $region$ (backend_status_code>399 OR target_status_code>399)&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">count</option>
+                <option name="useColors">1</option>
+                <option name="colorBy">value</option>
+                <option name="colorMode">none</option>
+                <option name="rangeColors">["0x555","0xd93f3c"]</option>
+                <option name="rangeValues">[0]</option>
+                <option name="underLabel">Backend Errors</option>
+            </single>
+        </panel>
+        <panel>
+            <title>Average Processing Time</title>
+            <single>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | search request_processing_time!=-1 response_processing_time!=-1 backend_processing_time!=-1
+                            | eval total_processing_time = request_processing_time*1000+response_processing_time*1000+backend_processing_time*1000
+                            | stats avg(total_processing_time) as average_time
+                            | eval average_time=tostring(round(average_time,2))+" ms"
+                            | nadefault average_time
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("elb")` $accountId$ $region$ request_processing_time!=-1 response_processing_time!=-1 ((target_processing_time=* AND target_processing_time!=-1) OR (backend_processing_time=* AND backend_processing_time!=-1))
+                            | eval request_processing_time=request_processing_time*1000, backend_processing_time=if(isnull(backend_processing_time), target_processing_time*1000, backend_processing_time*1000), response_processing_time=response_processing_time*1000, total_processing_time = request_processing_time %2B backend_processing_time %2B response_processing_time
+                            | stats avg(total_processing_time) as avg_total_time, avg(request_processing_time) as avg_request_time, avg(backend_processing_time) as avg_backend_time, avg(response_processing_time) as avg_response_time
+                            | table avg_total_time, avg_request_time, avg_backend_time, avg_response_time&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">average_time</option>
+                <option name="underLabel">Average Total Processing Time</option>
+            </single>
+            <single>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | search backend_processing_time!=-1
+                            | eval backend_processing_time=backend_processing_time*1000
+                            | stats avg(backend_processing_time) as average_time
+                            | eval average_time=tostring(round(average_time,2))+" ms"
+                            | nadefault average_time
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <drilldown>
+                    <link target="_blank">
+                        <![CDATA[
+                            search?q=search `aws-accesslog-sourcetype("elb")` $accountId$ $region$ request_processing_time!=-1 response_processing_time!=-1 ((target_processing_time=* AND target_processing_time!=-1) OR (backend_processing_time=* AND backend_processing_time!=-1))
+                            | eval request_processing_time=request_processing_time*1000, backend_processing_time=if(isnull(backend_processing_time), target_processing_time*1000, backend_processing_time*1000), response_processing_time=response_processing_time*1000, total_processing_time = request_processing_time %2B backend_processing_time %2B response_processing_time
+                            | stats avg(total_processing_time) as avg_total_time, avg(request_processing_time) as avg_request_time, avg(backend_processing_time) as avg_backend_time, avg(response_processing_time) as avg_response_time
+                            | table avg_total_time, avg_request_time, avg_backend_time, avg_response_time&earliest=$earliest$&latest=$latest$
+                        ]]>
+                    </link>
+                </drilldown>
+                <option name="field">average_time</option>
+                <option name="underLabel">Average Backend Processing Time</option>
+            </single>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table>
+                <title>Top Error-Causing Requests</title>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | search elb_status_code!=200 OR backend_status_code!=200
+                            | stats count by request, elb_status_code, backend_status_code
+                            | sort - count
+                            | table request, elb_status_code, backend_status_code, count
+                            | rename count as "Count", request as "Request", elb_status_code as "ELB Status", backend_status_code as "Backend Status"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="count">5</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+        <panel>
+            <chart>
+                <title>Error Count</title>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | search elb_status_code!=200 OR backend_status_code!=200
+                            | timechart count by elb
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+                <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">collapsed</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+                <option name="charting.axisX.scale">linear</option>
+                <option name="charting.axisY.scale">linear</option>
+                <option name="charting.axisY2.enabled">0</option>
+                <option name="charting.axisY2.scale">inherit</option>
+                <option name="charting.chart">line</option>
+                <option name="charting.chart.bubbleMaximumSize">50</option>
+                <option name="charting.chart.bubbleMinimumSize">10</option>
+                <option name="charting.chart.bubbleSizeBy">area</option>
+                <option name="charting.chart.nullValueMode">connect</option>
+                <option name="charting.chart.showDataLabels">none</option>
+                <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+                <option name="charting.chart.stackMode">default</option>
+                <option name="charting.chart.style">shiny</option>
+                <option name="charting.drilldown">all</option>
+                <option name="charting.layout.splitSeries">0</option>
+                <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+                <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+                <option name="charting.legend.placement">right</option>
+            </chart>
+        </panel>
+    </row>
+    <row>
+        <panel>
+            <table>
+                <title>Top Time-Consuming Requests</title>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | search request_processing_time!=-1 backend_processing_time!=-1 response_processing_time!=-1
+                            | eval total_processing_time = request_processing_time*1000+backend_processing_time*1000+response_processing_time*1000
+                            | stats avg(total_processing_time) as average_time by request
+                            | eval average_time = round(average_time, 2)
+                            | sort - average_time
+                            | table request, average_time
+                            | rename average_time as "Processing Time (ms)", request as "Request"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="count">5</option>
+                <option name="displayRowNumbers">true</option>
+                <option name="drilldown">row</option>
+            </table>
+        </panel>
+        <panel>
+            <chart>
+                <title>Processing Time (ms)</title>
+                <search base="elbAccessLogsSearch">
+                    <query>
+                        <![CDATA[
+                            | search request_processing_time!=-1 backend_processing_time!=-1 response_processing_time!=-1
+                            | eval request_processing_time=request_processing_time*1000, backend_processing_time=backend_processing_time*1000, response_processing_time=response_processing_time*1000
+                            | timechart avg(request_processing_time) AS "Request", avg(backend_processing_time) AS "Backend", avg(response_processing_time) AS "Response"
+                        ]]>
+                    </query>
+                    <earliest>$earliest$</earliest>
+                    <latest>$latest$</latest>
+                </search>
+                <option name="charting.chart">column</option>
+                <option name="charting.chart.stackMode">stacked</option>
+                <option name="charting.axisTitleX.visibility">collapsed</option>
+                <option name="charting.axisTitleY.visibility">visible</option>
+                <option name="charting.axisTitleY2.visibility">visible</option>
+            </chart>
+        </panel>
+    </row>
+</form>

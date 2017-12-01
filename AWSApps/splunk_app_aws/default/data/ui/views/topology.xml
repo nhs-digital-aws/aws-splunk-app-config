@@ -1,0 +1,117 @@
+<form script="topology.js" hideTitle="true" hideEdit="true">
+    <label>Topology</label>
+    <fieldset submitButton="false" autoRun="true">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <search>
+                <query>
+                    <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+                </query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+            <fieldForValue>account_id</fieldForValue>
+            <fieldForLabel>title</fieldForLabel>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>awsAccountId="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <search>
+                <query>
+                    <![CDATA[ |inputlookup regions ]]>
+                </query>
+                <earliest>0</earliest>
+                <latest>now</latest>
+            </search>
+            <fieldForValue>region</fieldForValue>
+            <fieldForLabel>label</fieldForLabel>
+            <prefix>(awsRegion="global" OR </prefix>
+            <valuePrefix>awsRegion="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+            <suffix>)</suffix>
+        </input>
+        <input type="dropdown" token="vpc" searchWhenChanged="true">
+            <label>VPC</label>
+            <default>*</default>
+            <choice value="*">All</choice>
+            <search>
+                <query>
+                    <![CDATA[
+                        `topology-daily-snapshot-index` resourceStatus!="ResourceDeleted" resourceId="vpc-*" AND $accountId$ AND $region$
+                        | dedup resourceId
+                        | eval expression="AND (resourceId=vol-* OR vpcId=".resourceId.")", fieldLabel=resourceId+" ("+resourceName+")"
+                    ]]>
+                </query>
+                <earliest>-7d</earliest>
+                <latest>now</latest>
+            </search>
+            <fieldForValue>expression</fieldForValue>
+            <fieldForLabel>fieldLabel</fieldForLabel>
+        </input>
+        <input type="dropdown" token="state" searchWhenChanged="true">
+            <label>Status of EC2 Instance</label>
+            <choice value="*">All</choice>
+            <choice value="running">Running</choice>
+            <choice value="stopped">Stopped</choice>
+            <choice value="terminated">Terminated</choice>
+            <choice value="shutting-down">Shutting down</choice>
+            <default>running</default>
+            <prefix>instanceStatus="</prefix>
+            <suffix>"</suffix>
+        </input>
+        <input id="awstags" token="tags">
+        </input>
+        <html id="timerange">
+            <label for="timepicker">Time</label>
+            <input type="text" id="timepicker"/>
+        </html>
+    </fieldset>
+    <search id="timeRangeSearch">
+         <query>
+            <![CDATA[
+                `topology-daily-snapshot-index` OR `topology-monthly-snapshot-index` resourceStatus!="ResourceDeleted" AND $accountId$ AND $region$ AND (resourceId!=i-* OR $state$) $vpc$
+                | stats min(_time) as minTime
+            ]]>
+        </query>
+        <earliest>0</earliest>
+        <latest>now</latest>
+    </search>
+    <search id="topologySearch">
+        <query>
+            <![CDATA[
+                $topology_source_spl$
+                | append [search `aws-description-clb("","")`
+                    | eval relationships=mvzip('instances{}.instance_id', 'instances{}.state'), resourceType="AWS::EC2::LoadBalancer", resourceStatus="OK"
+                    | rename vpc_id as vpcId, name as resourceName, account_id as awsAccountId, region as awsRegion
+                    | lookup regions region as awsRegion
+                    | eval resourceId=resourceName+" ("+awsAccountId+", "+location+")"]
+                | dedup resourceId
+                | search resourceStatus!="ResourceDeleted" AND $accountId$ AND $region$ AND (resourceId!=i-* OR $state$) $vpc$
+                | lookup regions region as awsRegion
+                | rename location as awsRegion
+                | eval resourceName=if(resourceType=="AWS::ElasticLoadBalancingV2::LoadBalancer", resourceName+" ("+awsAccountId+", "+awsRegion+")", resourceName)
+                | fields resourceArn, relationships, tags, resourceStatus, instanceStatus, instanceType, publicIp, privateIp, vpcId , resourceId, resourceName, awsAccountId, awsRegion, resourceType, attachedPolicies, userPolicies, groupPolicies $tags|tag2topology$
+           ]]>
+        </query>
+        <earliest>$earliest$</earliest>
+        <latest>$latest$</latest>
+    </search>
+    <row>
+        <panel>
+            <html id="topologyContainer">
+                <div id="aws-topology">
+                </div>
+                <canvas id="export_canvas"></canvas>
+            </html>
+        </panel>
+    </row>
+</form>

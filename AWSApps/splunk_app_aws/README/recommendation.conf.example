@@ -1,0 +1,6 @@
+[ec2]
+ri_recommendation_minimum_sample_days = 5
+instance_minimum_sample_days = 4
+instance_upgrade_threshold_score = 70
+instance_downgrade_threshold_score = -70
+instance_threshold_percent = 0.1

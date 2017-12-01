@@ -1,0 +1,68 @@
+<form script="ebs_insights.js">
+    <label>EBS Insights</label>
+
+    <fieldset submitButton="false">
+        <input type="multiselect" token="accountId" searchWhenChanged="true">
+            <label>Account ID</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="account_id" fieldForLabel="title">
+                <![CDATA[ |aclinputlookup all_account_ids | mvcombine delim=", " name | nomv name | eval title=account_id." (".name.")" ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>aws_account_id="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input type="multiselect" token="region" searchWhenChanged="true">
+            <label>Regions</label>
+            <choice value="*">All</choice>
+            <populatingSearch fieldForValue="region" fieldForLabel="label">
+                <![CDATA[ |inputlookup regions ]]>
+            </populatingSearch>
+            <prefix> (</prefix>
+            <suffix>) </suffix>
+            <valuePrefix>region="</valuePrefix>
+            <valueSuffix>"</valueSuffix>
+            <delimiter> OR </delimiter>
+        </input>
+        <input id="awstags" token="tags">
+        </input>
+        <input id="recommendation_filter" type="multiselect" token="recommendation_filter" searchWhenChanged="true">
+            <label>Insights Filter</label>
+            <choice value="*">All</choice>
+            <choice value="unattached">Unattached EBS</choice>
+            <choice value="nonoptimized">Non-optimized EBS</choice>
+            <choice value="nosnapshot">No Snapshot(30 days)</choice>
+            <choice value="largeiops">Large IOPS</choice>
+            <choice value="smalliops">Small IOPS</choice>
+            <default>All</default>
+        </input>
+    </fieldset>
+
+    <row>
+        <panel>
+            <table id="ebs_recommend_merge">
+                <search base="search_ebs_recommendation_merge">
+                    <query>
+                        <![CDATA[
+                        sort by +Severity ,id
+                        |lookup regions region OUTPUT label as region
+                        |table id, region, size, type, status, abnormaltype, Severity
+                        |rename id as ID,region as Region, size as "Size (GB)", type as Type, status as State, abnormaltype as "Insight"
+                        ]]>
+                    </query>
+                </search>
+                <option name="drilldown">row</option>
+                <option name="count">15</option>
+                <drilldown>
+                    <link>
+                        individual_ebs_usage?form.volumes=$row.ID$&amp;latest=$latest$&amp;earliest=$earliest$&amp;form.accountId=$form.accountId$&amp;regions=$form.region$
+                    </link>
+                </drilldown>
+            </table>
+        </panel>
+    </row>
+</form>
+
+

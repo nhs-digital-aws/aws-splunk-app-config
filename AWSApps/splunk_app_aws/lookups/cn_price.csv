@@ -1,0 +1,127 @@
+instance_type,region,os,tenancy,pre_install,on_demand_hourly,reserved_one_all_yearly,reserved_one_partial_yearly,reserved_one_partial_hourly,reserved_one_no_hourly
+t2.micro,cn-north-1,Linux,Shared,NA,0.106,716,460,0.031,0.084
+t2.small,cn-north-1,Linux,Shared,NA,0.212,1434,921,0.062,0.168
+t2.medium,cn-north-1,Linux,Shared,NA,0.426,2868,1841,0.124,0.336
+t2.large,cn-north-1,Linux,Shared,NA,0.851,5736,3682,0.248,0.672
+t2.xlarge,cn-north-1,Linux,Shared,NA,1.696,11476,5856,0.6683150684931507,1.562
+t2.2xlarge,cn-north-1,Linux,Shared,NA,3.392,22946,11705,1.3366164383561645,3.13
+m3.medium,cn-north-1,Linux,Shared,NA,0.868,2124,1406,0.087,0.289
+m3.large,cn-north-1,Linux,Shared,NA,1.735,4255,2818,0.174,0.578
+m3.xlarge,cn-north-1,Linux,Shared,NA,3.471,8503,5629,0.348,1.156
+m3.2xlarge,cn-north-1,Linux,Shared,NA,6.942,17016,11258,0.6970000000000001,2.312
+m4.large,cn-north-1,Linux,Shared,NA,1.405,3813,1945,0.22206849315068494,0.52
+m4.xlarge,cn-north-1,Linux,Shared,NA,2.815,7680,3919,0.4473287671232877,1.047
+t2.micro,cn-north-1,RHEL,Shared,NA,0.479,3919,460,0.404,0.457
+t2.small,cn-north-1,RHEL,Shared,NA,0.586,4636,921,0.43500000000000005,0.541
+t2.medium,cn-north-1,RHEL,Shared,NA,0.799,6079,1841,0.498,0.709
+t2.large,cn-north-1,RHEL,Shared,NA,1.224,9001,3682,0.621,1.045
+t2.xlarge,cn-north-1,RHEL,Shared,NA,2.1,15010,5856,1.072178082191781,1.965
+t2.2xlarge,cn-north-1,RHEL,Shared,NA,4.267,30613,11705,2.211657534246575,4.005
+m3.medium,cn-north-1,RHEL,Shared,NA,1.241,5326,1406,0.4600000000000001,0.662
+m3.large,cn-north-1,RHEL,Shared,NA,2.109,7457,2818,0.547,0.951
+m3.xlarge,cn-north-1,RHEL,Shared,NA,3.844,11714,5629,0.722,1.529
+m3.2xlarge,cn-north-1,RHEL,Shared,NA,7.75,23952,11258,1.5050000000000001,3.12
+m4.large,cn-north-1,RHEL,Shared,NA,1.796,7247,1945,0.6140684931506849,0.912
+m4.xlarge,cn-north-1,RHEL,Shared,NA,3.207,11114,3919,0.8393287671232879,1.439
+t2.micro,cn-north-1,SUSE,Shared,NA,0.168,1168,597,0.068,0.139
+t2.small,cn-north-1,SUSE,Shared,NA,0.399,2666,1468,0.14300000000000002,0.321
+t2.medium,cn-north-1,SUSE,Shared,NA,1.048,4637,2936,0.205,0.563
+t2.large,cn-north-1,SUSE,Shared,NA,1.472,7386,4775,0.32899999999999996,0.915
+t2.xlarge,cn-north-1,SUSE,Shared,NA,2.369,13428,7041,0.7558082191780822,1.784
+t2.2xlarge,cn-north-1,SUSE,Shared,NA,4.066,24898,12890,1.4241232876712329,3.352
+m3.medium,cn-north-1,SUSE,Shared,NA,1.49,3943,2500,0.174,0.516
+m3.large,cn-north-1,SUSE,Shared,NA,2.357,6074,3912,0.261,0.805
+m3.xlarge,cn-north-1,SUSE,Shared,NA,4.093,10323,6724,0.43500000000000005,1.383
+m3.2xlarge,cn-north-1,SUSE,Shared,NA,7.564,18836,12353,0.784,2.539
+m4.large,cn-north-1,SUSE,Shared,NA,2.058,5707,3094,0.3070684931506849,0.735
+m4.xlarge,cn-north-1,SUSE,Shared,NA,3.468,9574,5068,0.5323287671232877,1.262
+t2.micro,cn-north-1,Windows,Shared,NA,0.137,914,547,0.044,0.125
+t2.small,cn-north-1,Windows,Shared,NA,0.275,1987,1213,0.093,0.271
+t2.medium,cn-north-1,Windows,Shared,NA,0.55,3989,2432,0.187,0.544
+t2.large,cn-north-1,Windows,Shared,NA,1.037,7978,4864,0.374,1.088
+t2.xlarge,cn-north-1,Windows,Shared,NA,1.972,13893,7061,0.8062465753424657,1.838
+t2.2xlarge,cn-north-1,Windows,Shared,NA,3.81,26608,13536,1.545287671232877,3.547
+m3.medium,cn-north-1,Windows,Shared,NA,0.983,2754,1829,0.11200000000000002,0.375
+m3.large,cn-north-1,Windows,Shared,NA,1.953,5514,3664,0.22400000000000003,0.751
+m3.xlarge,cn-north-1,Windows,Shared,NA,3.9,11078,7327,0.45400000000000007,1.51
+m3.2xlarge,cn-north-1,Windows,Shared,NA,7.632,22062,14611,0.9020000000000001,3.007
+m4.large,cn-north-1,Windows,Shared,NA,2.005,9078,4578,0.5225616438356165,1.121
+m4.xlarge,cn-north-1,Windows,Shared,NA,4.016,18210,9183,1.0483287671232877,2.249
+m3.large,cn-north-1,Windows,Shared,SQL Std,7.439,36338,24053,1.4869999999999999,4.952
+m3.xlarge,cn-north-1,Windows,Shared,SQL Std,9.436,42337,28002,1.735,5.77
+m3.2xlarge,cn-north-1,Windows,Shared,SQL Std,18.399,81677,54033,3.346,11.132
+m4.large,cn-north-1,Windows,Shared,SQL Std,6.818,51231,25654,2.928561643835616,5.933
+m4.xlarge,cn-north-1,Windows,Shared,SQL Std,8.64,58707,29432,3.3598219178082194,6.872
+m4.2xlarge,cn-north-1,Windows,Shared,SQL Std,17.274,117358,58835,6.7163150684931505,13.736
+m4.4xlarge,cn-north-1,Windows,Shared,SQL Std,34.547,234706,117665,13.432123287671235,27.47
+m4.10xlarge,cn-north-1,Windows,Shared,SQL Std,86.369,586773,294167,33.58071232876712,68.677
+m4.16xlarge,cn-north-1,Windows,Shared,SQL Std,138.191,938830,470664,53.72880821917808,109.882
+t2.micro,cn-north-1,Windows,Shared,SQL Web,0.448,2312,1431,0.10600000000000001,0.315
+t2.small,cn-north-1,Windows,Shared,SQL Web,0.897,4675,2861,0.21799999999999997,0.637
+t2.medium,cn-north-1,Windows,Shared,SQL Web,1.794,9342,5722,0.43500000000000005,1.273
+t2.large,cn-north-1,Windows,Shared,SQL Web,2.903,15448,9462,0.719,2.105
+t2.xlarge,cn-north-1,Windows,Shared,SQL Web,2.45,18100,9168,1.0465342465753427,2.322
+t2.2xlarge,cn-north-1,Windows,Shared,SQL Web,4.759,34921,17696,2.019767123287671,4.496
+m3.medium,cn-north-1,Windows,Shared,SQL Web,1.599,5878,3869,0.24299999999999997,0.801
+m3.large,cn-north-1,Windows,Shared,SQL Web,3.191,11108,7358,0.45400000000000007,1.514
+m3.xlarge,cn-north-1,Windows,Shared,SQL Web,6.382,22348,14797,0.9140000000000001,3.046
+m3.2xlarge,cn-north-1,Windows,Shared,SQL Web,12.757,44613,29501,1.8290000000000002,6.08
+m4.large,cn-north-1,Windows,Shared,SQL Web,2.508,13484,6781,0.7740684931506849,1.624
+m3.medium,cn-north-1,Linux,Dedicated,NA,0.955,2336,1549,0.093,0.317
+m3.large,cn-north-1,Linux,Dedicated,NA,1.909,4680,3098,0.19299999999999998,0.635
+m3.xlarge,cn-north-1,Linux,Dedicated,NA,3.818,9353,6195,0.38599999999999995,1.271
+m3.2xlarge,cn-north-1,Linux,Dedicated,NA,7.636,18717,12384,0.765,2.543
+m4.large,cn-north-1,Linux,Dedicated,NA,1.545,4194,2140,0.24426027397260275,0.572
+m4.xlarge,cn-north-1,Linux,Dedicated,NA,3.097,8449,4311,0.49208219178082196,1.151
+m4.2xlarge,cn-north-1,Linux,Dedicated,NA,6.188,16839,8591,0.9807397260273973,2.295
+m4.4xlarge,cn-north-1,Linux,Dedicated,NA,12.371,33663,17175,1.9606301369863015,4.588
+m4.10xlarge,cn-north-1,Linux,Dedicated,NA,28.121,76520,39041,4.456712328767123,10.429
+m4.16xlarge,cn-north-1,Linux,Dedicated,NA,44.995,122433,62466,7.130808219178082,16.686
+m3.medium,cn-north-1,RHEL,Dedicated,NA,1.365,5858,1549,0.504,0.728
+m3.large,cn-north-1,RHEL,Dedicated,NA,2.32,8202,3098,0.603,1.046
+m3.xlarge,cn-north-1,RHEL,Dedicated,NA,4.228,12885,6195,0.796,1.681
+m3.2xlarge,cn-north-1,RHEL,Dedicated,NA,8.525,26347,12384,1.6550000000000002,3.432
+m4.large,cn-north-1,RHEL,Dedicated,NA,1.937,7628,2140,0.6362602739726028,0.964
+m4.xlarge,cn-north-1,RHEL,Dedicated,NA,3.489,11883,4311,0.8840821917808219,1.543
+m4.2xlarge,cn-north-1,RHEL,Dedicated,NA,7.037,24276,8591,1.8297397260273973,3.144
+m4.4xlarge,cn-north-1,RHEL,Dedicated,NA,13.22,41101,17175,2.8096301369863017,5.437
+m4.10xlarge,cn-north-1,RHEL,Dedicated,NA,28.97,83957,39041,5.3057123287671235,11.278
+m4.16xlarge,cn-north-1,RHEL,Dedicated,NA,45.844,129870,62466,7.979808219178082,17.535
+m3.medium,cn-north-1,SUSE,Dedicated,NA,1.639,4337,2749,0.19299999999999998,0.567
+m3.large,cn-north-1,SUSE,Dedicated,NA,2.593,6681,4304,0.28600000000000003,0.885
+m3.xlarge,cn-north-1,SUSE,Dedicated,NA,4.502,11355,7396,0.47900000000000004,1.521
+m3.2xlarge,cn-north-1,SUSE,Dedicated,NA,8.32,20719,13591,0.865,2.792
+m4.large,cn-north-1,SUSE,Dedicated,NA,2.198,6088,3289,0.32926027397260277,0.787
+m4.xlarge,cn-north-1,SUSE,Dedicated,NA,3.75,10343,5460,0.577082191780822,1.366
+m4.2xlarge,cn-north-1,SUSE,Dedicated,NA,6.841,18733,9740,1.065739726027397,2.51
+m4.4xlarge,cn-north-1,SUSE,Dedicated,NA,13.024,35557,18324,2.0456301369863015,4.803
+m4.10xlarge,cn-north-1,SUSE,Dedicated,NA,28.774,78414,40190,4.541712328767123,10.644
+m4.16xlarge,cn-north-1,SUSE,Dedicated,NA,45.648,124327,63615,7.215808219178083,16.901
+m3.medium,cn-north-1,Windows,Dedicated,NA,1.081,3029,2009,0.124,0.412
+m3.large,cn-north-1,Windows,Dedicated,NA,2.148,6065,4031,0.249,0.826
+m3.xlarge,cn-north-1,Windows,Dedicated,NA,4.29,12185,8061,0.498,1.661
+m3.2xlarge,cn-north-1,Windows,Dedicated,NA,8.395,24268,-1,-1,3.307
+m4.large,cn-north-1,Windows,Dedicated,NA,2.146,9459,4772,0.5447534246575343,1.173
+m4.xlarge,cn-north-1,Windows,Dedicated,NA,4.299,18978,9575,1.093082191780822,2.353
+m4.2xlarge,cn-north-1,Windows,Dedicated,NA,8.591,37889,19116,2.1822465753424654,4.698
+m4.4xlarge,cn-north-1,Windows,Dedicated,NA,17.177,75764,38225,4.363630136986301,9.394
+m4.10xlarge,cn-north-1,Windows,Dedicated,NA,40.136,181771,91667,10.464219178082192,22.444
+m4.16xlarge,cn-north-1,Windows,Dedicated,NA,64.219,290835,146667,16.74280821917808,35.91
+m3.large,cn-north-1,Windows,Dedicated,SQL Std,8.183,39971,26460,1.6360000000000001,5.447
+m3.xlarge,cn-north-1,Windows,Dedicated,SQL Std,10.38,46570,30801,1.9099999999999997,6.347
+m3.2xlarge,cn-north-1,Windows,Dedicated,SQL Std,20.239,89844,59438,3.6820000000000004,12.245
+m4.large,cn-north-1,Windows,Dedicated,SQL Std,6.959,51612,25849,2.9507534246575347,5.985
+m4.xlarge,cn-north-1,Windows,Dedicated,SQL Std,8.922,59476,29824,3.4045890410958908,6.976
+m4.2xlarge,cn-north-1,Windows,Dedicated,SQL Std,17.838,118893,59618,6.805739726027397,13.945
+m4.4xlarge,cn-north-1,Windows,Dedicated,SQL Std,35.67,237763,119225,13.61013698630137,27.887
+m4.10xlarge,cn-north-1,Windows,Dedicated,SQL Std,86.369,586773,294167,33.58071232876712,68.677
+m4.16xlarge,cn-north-1,Windows,Dedicated,SQL Std,138.191,938830,470664,53.72880821917808,109.882
+m3.medium,cn-north-1,Windows,Dedicated,SQL Web,1.759,6465,4254,0.267,0.881
+m3.large,cn-north-1,Windows,Dedicated,SQL Web,3.51,12218,8092,0.498,1.665
+m3.xlarge,cn-north-1,Windows,Dedicated,SQL Web,7.02,24582,16278,1.008,3.35
+m3.2xlarge,cn-north-1,Windows,Dedicated,SQL Web,14.033,49074,32450,2.009,6.688
+m4.large,cn-north-1,Windows,Dedicated,SQL Web,2.649,13865,6975,0.7962602739726028,1.676
+m4.xlarge,cn-north-1,Windows,Dedicated,SQL Web,4.776,23148,11660,1.331082191780822,2.829
+m4.2xlarge,cn-north-1,Windows,Dedicated,SQL Web,9.545,46238,23291,2.658739726027397,5.651
+m4.4xlarge,cn-north-1,Windows,Dedicated,SQL Web,19.083,92469,46578,5.31713698630137,11.301
+m4.10xlarge,cn-north-1,Windows,Dedicated,SQL Web,44.903,223530,112546,12.847712328767123,27.211
