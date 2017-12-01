@@ -34,7 +34,7 @@ find . -name "*.meta" -exec sed -i s/###ROLEID###/$role_id/g {} +
 echo "Done."
 
 echo "Copying Splunk apps to Splunk app directory"
-cp -r /home/splunk/AWSApps/* /opt/splunk/etc/apps/
+cp -r /home/splunk/aws-splunk-app-config/AWSApps/* /opt/splunk/etc/apps/
 
 echo "Restarting Splunk"
 /opt/splunk/bin/splunk restart
