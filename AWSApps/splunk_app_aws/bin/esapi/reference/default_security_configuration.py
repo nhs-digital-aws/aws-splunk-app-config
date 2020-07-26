@@ -65,10 +65,10 @@ class DefaultSecurityConfiguration(SecurityConfiguration):
             
         self.log_special(_("Loaded ESAPI properties"))
         
-        self.log_special(_(" ======Master Configuration======"))
+        self.log_special(_(" ======Main Configuration======"))
         
         for option in dir(settings):
-            if "Master" not in option and option[0] != "_":
+            if "Main" not in option and option[0] != "_":
                 self.log_special("  |   %(key)s = %(value)s" % {"key": option, "value": str(settings.__dict__[option])})
     
     def log_special(self, text):
@@ -173,8 +173,8 @@ class DefaultSecurityConfiguration(SecurityConfiguration):
         return settings.Executor_MaxRunningTime
     
     # Hashing
-    def get_master_salt(self):
-        return ESAPI.encoder().decode_from_base64(settings.Encryptor_MasterSalt)
+    def get_main_salt(self):
+        return ESAPI.encoder().decode_from_base64(settings.Encryptor_MainSalt)
 
     def get_hash_algorithm(self):
         return settings.Encryptor_HashAlgorithm

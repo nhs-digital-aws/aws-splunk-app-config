@@ -28,7 +28,7 @@ class SecurityConfiguration:
     information is stored.
     
     Please note that adding another layer of encryption does not make the
-    attackers job much more difficult. Somewhere there must be a master 
+    attackers job much more difficult. Somewhere there must be a main 
     "secret" that is stored unencrypted on the application platform. Creating 
     another layer of indirection doesn't provide any real additional security. 
     Its up to the reference implementation to decide whether this file should 
@@ -272,12 +272,12 @@ class SecurityConfiguration:
         raise NotImplementedError()        
         
     # Hashing
-    def get_master_salt(self):
+    def get_main_salt(self):
         """
-        Gets the master salt that is used to salt stored password hashes and 
+        Gets the main salt that is used to salt stored password hashes and 
         any other location where a salt is needed.
         
-        @return: the current master salt
+        @return: the current main salt
         """
         raise NotImplementedError()
 
