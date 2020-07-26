@@ -127,8 +127,8 @@ class SimpleCollectorTask(object):
         self._worker = None
 
     def start(self, name, params):
-        master_context = logging.ThreadLocalLoggingStack.top()
-        args = (self._identifier, master_context, self._callback, self._app, name, params)
+        main_context = logging.ThreadLocalLoggingStack.top()
+        args = (self._identifier, main_context, self._callback, self._app, name, params)
         worker = multiprocessing.Process(
             target=self._task_procedure, args=args
         )
@@ -149,8 +149,8 @@ class SimpleCollectorTask(object):
             self._worker = None
 
     @classmethod
-    def _task_procedure(cls, identifier, master_context, callback, app, name, params):
-        prefix = '' if not os.name == 'nt' else master_context
+    def _task_procedure(cls, identifier, main_context, callback, app, name, params):
+        prefix = '' if not os.name == 'nt' else main_context
         logging.RootHandler.teardown()
         app.setup_root_logger(identifier)
         with logging.LogContext(prefix=prefix):

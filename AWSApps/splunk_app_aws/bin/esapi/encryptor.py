@@ -23,7 +23,7 @@ class Encryptor():
     encryption and hashing operations. Implementations should
     rely on a strong cryptographic implementation, such as PyCrypto.
     Implementors should take care to ensure that they initialize their
-    implementation with a strong "master key", and that they protect this secret
+    implementation with a strong "main key", and that they protect this secret
     as much as possible.
     
     Possible future enhancements (depending on feedback) might include:

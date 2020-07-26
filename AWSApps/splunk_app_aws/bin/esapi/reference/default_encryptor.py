@@ -63,7 +63,7 @@ class DefaultEncryptor(Encryptor):
                 {'algorithm' : self.encrypt_algorithm} )
         
         self.encryption_key_length = ESAPI.security_configuration().get_encryption_key_length()
-        self.master_salt = ESAPI.security_configuration().get_master_salt()
+        self.main_salt = ESAPI.security_configuration().get_main_salt()
         
         # Public key crypto
         self.signing_algorithm = ESAPI.security_configuration().get_digital_signature_algorithm()
@@ -81,18 +81,18 @@ class DefaultEncryptor(Encryptor):
         self.keys_asymmetric_public_location = self.keys_location + "asymmetric-public"
              
     def hash(self, plaintext, salt, iterations=None):
-        # Verify a MasterSalt has been set
-        if not self.master_salt or len(self.master_salt) < 20:
+        # Verify a MainSalt has been set
+        if not self.main_salt or len(self.main_salt) < 20:
             raise Exception(
-                _("There is an error in the application configuration. The MasterSalt has not been set properly. Please see the instructions in the README for setting up a crypto keyring. Currently, Encryptor_MasterSalt=%(value)s") % 
-                {'value' : self.master_salt})
+                _("There is an error in the application configuration. The MainSalt has not been set properly. Please see the instructions in the README for setting up a crypto keyring. Currently, Encryptor_MainSalt=%(value)s") % 
+                {'value' : self.main_salt})
     
         if iterations is None: 
             iterations = self.hash_iterations
     
         try:
             digest = hashlib.new(self.hash_algorithm)
-            digest.update(self.master_salt)
+            digest.update(self.main_salt)
             digest.update(salt)
             digest.update(plaintext)
             
@@ -262,10 +262,10 @@ class DefaultEncryptor(Encryptor):
              "--status=primary",
              "--destination=%s" % self.keys_asymmetric_public_location] )
              
-        # Gen a new master salt
+        # Gen a new main salt
         from os import urandom
         salt = urandom(20)
         print "Please modify this line in esapi/conf/settings.py:"
-        print "Encryptor_MasterSalt = '" + ESAPI.encoder().encode_for_base64(salt) + "'"
+        print "Encryptor_MainSalt = '" + ESAPI.encoder().encode_for_base64(salt) + "'"
              
         print "Done!"

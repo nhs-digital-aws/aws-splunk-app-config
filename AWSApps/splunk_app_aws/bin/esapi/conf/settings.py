@@ -7,7 +7,7 @@
 # implementations that some files may need to be read-write as they get
 # updated dynamically.
 #
-# Before using, be sure to update the MasterSalt as described below.
+# Before using, be sure to update the MainSalt as described below.
 # This settings.py may be used, and contains only very safe defaults.
 #
 # This settings file is Python code, and must be syntactically correct.
@@ -83,10 +83,10 @@ Authenticator_AbsoluteTimeoutDuration = timedelta(minutes=20)
 # Directory in which keys are stored
 Encryptor_KeysLocation = '/tmp/esapi/keyring'
 
-# The master salt is appended to all hashes. 
+# The main salt is appended to all hashes. 
 # WARNING: THIS MUST BE CHANGED FROM THE DEFAULT BY FOLLOWING THE INSTRUCTIONS
 # IN THE README TO GENERATE NEW ENCRYPTION KEYS
-Encryptor_MasterSalt = None
+Encryptor_MainSalt = None
 
 # AES is the most widely used and strongest encryption algorithm
 Encryptor_EncryptionAlgorithm = 'AES'

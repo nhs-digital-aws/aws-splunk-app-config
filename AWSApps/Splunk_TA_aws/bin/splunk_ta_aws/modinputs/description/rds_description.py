@@ -22,7 +22,7 @@ def rds_instances(config, **kwargs):
             "character_set_name", "create_time", "endpoint", "engine",
             "engine_version", "id", "instance_class", "iops",
             "latest_restorable_time", "license_model",
-            "master_username", "multi_az", "parameter_groups",
+            "main_username", "multi_az", "parameter_groups",
             "pending_modified_values", "preferred_backup_window",
             "preferred_maintenance_window",
             "read_replica_dbinstance_identifiers", "status", "status_infos",
